@@ -4,68 +4,6 @@
 
 #include <curl/curl.h>
 
-typedef struct pouch_pkt {
-	/*
-	   A data structure to hold
-	   JSON-data to be sent to/from
-	   a couchDB server.
-	 */
-	char *json_data; 	// some amount of json-ified data
-	size_t size;		// that amount, exactly
-} pouch_pkt;
-
-pouch_pkt new_pouch_pkt() {
-	/*
-	   Creates, zeroes, and returns
-	   a new pouch_pkt.
-	 */
-	pouch_pkt out;
-	out.json_data = (char *)NULL;
-	out.size = 0;
-	return out;
-}
-
-typedef struct pouch_query {
-	/*
-	   A data structure to be used
-	   to keep track of requests /
-	   responses to and from a couchDB
-	   server.
-	 */ 
-	char *server;		// server address
-	char *database;		// database (optional)
-	char *id;			// id (optional)
-	pouch_pkt req;			// the request sent to the server
-	pouch_pkt resp;		// the server's response
-	CURLcode curl_resp; // CURL response code
-} pouch_query;
-
-pouch_query new_pouch_query(){
-	/*
-	   Creates, zeroes, and returns
-	   a new pouch_query.
-	 */
-	pouch_query out;
-	out.server = (char *)NULL;
-	out.database = (char *)NULL;
-	out.id = (char *)NULL;
-	out.req = new_pouch_pkt();
-	out.resp = new_pouch_pkt();
-	return out;
-}
-
-void pouch_init(){
-	/*
-	   A wrapper for CURL initialization.
-	   Must be run at the beginning of
-	   any program that tries to send/
-	   receive using CURL.
-	   */
-	curl_global_init(CURL_GLOBAL_ALL);
-}
-
-
-
 typedef struct couch_pkt {
 	char *memory; // use malloc for size
 	size_t size;
@@ -104,7 +42,7 @@ char* build_request(char *server, char *db, char *id){
 	char *url_string;
 	url_string = (char *)malloc(size);
 	sprintf(url_string, "%s/%s/%s", server, db, id);
-	return url_string;
+	return url_string; // MAKE SURE TO FREE THIS LATER
 }
 
 CURLcode couchRequest(char *method, char *url_string, couch_pkt *data, couch_pkt *resp){
@@ -113,23 +51,24 @@ CURLcode couchRequest(char *method, char *url_string, couch_pkt *data, couch_pkt
 	CURLcode res;
 	curl = curl_easy_init();
 	if(curl){
-
 		// setup the CURL object/request
-		curl_easy_setopt(curl, CURLOPT_USERAGENT, "soncoucher/0.1");
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");
 		curl_easy_setopt(curl, CURLOPT_URL, url_string);
 		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
-		//TODO: if method is PUT/POST/DELETE/COPY, use the upload method.
+		// TODO: if method is PUT/POST/DELETE/COPY, use the upload method.
 		if ( !strncmp(method, "PUT", 3) ||
 				!strncmp(method, "POST", 4) ||
 				!strncmp(method, "DELETE", 6) ||
 				!strncmp(method, "COPY", 4) ) {
 			// do nothing for the moment
 		}
-
+		// Timeouts
 		//curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 1);
 		//curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)resp);
+		curl_easy_setopt(curl, CURLOPT_READFUNCTION, recv_data_callback);
+		curl_easy_setopt(curl, CURLOPT_READDATA, (void *)data);
 
 		// make the request
 		res = curl_easy_perform(curl);
@@ -152,5 +91,5 @@ int main(int argc, char* argv[]){
 	// you have to free your responses
 	free(data.memory);
 	free(resp.memory);
-	return (int)result;	
+	return (int)result;
 }
