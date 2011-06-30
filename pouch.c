@@ -174,11 +174,11 @@ pouch_request *pouch_do_request(pouch_request *pr){
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
 		curl_easy_setopt(curl, CURLOPT_URL, pr->url);						// where to send this request
 		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3);					// Timeout after 3 seconds
+		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);	// where to store the response
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
-		// print the request
-		printf("%s : %s\n", pr->method, pr->url);
 		if(pr->req.data && strlen(pr->req.data) > 0){ // check for data upload
 			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
@@ -212,13 +212,16 @@ pouch_request *pouch_do_request(pouch_request *pr){
 		// if we were unable to initialize a CURL object
 		pr->curlcode = 2;
 	}
+	
+	// Print the request
+	printf("Sent %s : %s\n", pr->method, pr->url);
+	if(pr->req.data && strlen(pr->req.data) > 0){ // check for data upload
+		printf("\t%s\n", pr->req.data);
+	}
+	printf("Received %d bytes, status = %d\n",
+			(int)pr->resp.size, pr->curlcode);
+	printf("\t%s\n", pr->resp.data);
 	return pr;
-}
-
-void pouch_request_display(pouch_request *pr){
-	printf("curlcode: %d\n", pr->curlcode);
-	printf("length:   %d\n", (int)pr->resp.size);
-	printf("message:  %s\n", pr->resp.data);
 }
 
 int main(int argc, char* argv[]){
@@ -232,18 +235,12 @@ int main(int argc, char* argv[]){
 	// make the request
 	probj = pouch_do_request(probj);
 
-	// show the result
-	pouch_request_display(probj);
-
 	// create a new document within the new database
 	probj = pouch_request_set_url(probj, "http://127.0.0.1:5984/newdb/testdoc");
 	//TODO: probj = pouch_request_set_data(probj, "{}");
 
 	// make the request
 	probj = pouch_do_request(probj);
-
-	// show the result
-	pouch_request_display(probj);
 
 	// finished making requests; free the request object
 	pouch_free_request(probj);
