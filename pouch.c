@@ -23,11 +23,10 @@ size_t recv_data_callback(char *ptr, size_t size, size_t nmemb, void *data){
 	if (pkt->data) { // realloc was successful
 		memcpy(&(pkt->data[pkt->size]), ptr, ptrsize); // append new data
 		pkt->size += ptrsize;
-		pkt->data[pkt->size] = 0; //TODO: why not '\0'?
+		pkt->data[pkt->size] = '\0'; //TODO: why not '\0'?
 	}
 	else {
-		fprintf(stderr, "recv_data_callback: unable to successfully realloc %d bytes", (int) ptrsize);
-		//return 0; // this triggers errors within the CURL library
+		fprintf(stderr, "recv_data_callback: realloc failed\n");
 	}
 	return ptrsize;
 }
@@ -38,7 +37,6 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	if (pkt->size > 0) { // there must be data to send
 		size_t tocopy = (pkt->size > maxcopysize) ? maxcopysize : pkt->size;
 		memcpy(ptr, pkt->offset, tocopy);
-		//TODO: before send, make sure that pkt.offset = pkt.json_data, otherwise we'll get *weird* results. Random data being sent, weird. That freaking crazy.
 		pkt->offset += tocopy; // advance our offset by the number of bytes already sent, so that if this function is called again, the same data isn't sent multiple times
 		pkt->size -= tocopy; // we already copied tocopy number bytes, so next time we have to copy fewer.
 		return tocopy;
@@ -46,7 +44,7 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	return 0;
 }
 
-void pouch_curl(char *urlstring, char *method, char *data){
+pouch_resp pouch_curl(char *urlstring, char *method, char *data){
 	CURL *curl;
 	CURLcode ret;
 	struct curl_slist *headers = NULL;
@@ -90,7 +88,6 @@ void pouch_curl(char *urlstring, char *method, char *data){
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)&send_pkt);
 
-
 			printf("\t%s\n", send_pkt.data);
 		}
 
@@ -103,24 +100,16 @@ void pouch_curl(char *urlstring, char *method, char *data){
 	}
 	else{
 		// if we were unable to initialize a CURL object
-		ret = -1;
+		ret = 2;
 	}
-
-	printf("Response code: %d\n", ret);
-	if(recv_pkt.data){
-		printf("Response length: %d\n", (int)recv_pkt.size);
-		printf("Response data: %s\n", recv_pkt.data);
-	}
+	pouch_resp out = {recv_pkt, ret};
+	return out;
 }
 
 int main(int argc, char* argv[]){
-	// make the request
-	/*
-	   POST /somedatabase/ HTTP/1.0
-	   Content-Length: 245
-	   Content-Type: application/json
-	*/
-	char *data = NULL;//"hi";
-	pouch_curl("http://127.0.0.1:5984/test/", "GET", data);
+	char *data = NULL;
+	pouch_resp couchdata = pouch_curl("http://127.0.0.1:5984/test/", "GET", data);
+	free(couchdata.pkt.data);
+	free(couchdata.pkt.offset);
 	return 0;
 }
