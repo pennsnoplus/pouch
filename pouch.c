@@ -5,29 +5,27 @@
 #include "pouch.h"
 
 int main(int argc, char* argv[]){
-	// create a request object
-	pouch_request *probj = pouch_init_request();
+	char *server = "http://127.0.0.1:5984";
+	char *newdb = "petersdb";
+	char *maxrevs = "500000";
+	
+	// create a pouch_request* object
+	// 		to hold request responses
+	pouch_request *pr = pouch_init_request();
 
-	pouch_request_set_method(probj, GET);
-	pouch_request_set_url(probj, "http://127.0.0.1:5984/test/first");
-	pouch_request_add_param(probj, "revs", "true");
+	// create a new database
+	pr = db_create(pr, server, newdb);
+	// get info on the new datase
+	pr = db_get(pr, server, newdb);
+	// show all DBs
+	pr = db_get_all(pr, server);
+	// delete the new database
+	pr = db_delete(pr, server, newdb);
+	// show all DBs
+	pr = db_get_all(pr, server);
 
-	// make the request
-	pouch_do_request(probj);
-
-	// add a new param
-	pouch_request_clear_params(probj);
-	pouch_request_add_param(probj, "revs_info", "true");
-
-	// create a new document within the new database
-	//pouch_request_set_url(probj, "http://127.0.0.1:5984/newdb/testdoc");
-	//TODO: probj = pouch_request_set_data(probj, "{}");
-
-	// make the request
-	pouch_do_request(probj);
-
-	// finished making requests; free the request object
-	pouch_free_request(probj);
+	// cleanup
+	pouch_free_request(pr);
 
 	return 0;
 }

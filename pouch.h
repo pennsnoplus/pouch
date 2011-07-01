@@ -68,6 +68,7 @@ pouch_request *pouch_request_set_url(pouch_request *pr, char *url){
 		free(pr->url);
 	pr->url = (char *)malloc(length); // allocate space
 	memcpy(pr->url, url, length);	  // copy the new url
+
 	return pr;
 }
 pouch_request *pouch_request_set_data(pouch_request *pr, char *str){
@@ -83,7 +84,7 @@ pouch_request *pouch_request_set_data(pouch_request *pr, char *str){
 		free(pr->req.data);
 	pr->req.data = (char *)malloc(length);	// allocate space
 	memcpy(pr->req.data, str, length);	// copy it over
-
+	pr->req.data[strlen(pr->req.data)] = '\0';
 	// Because of the way CURL sends data,
 	// before sending the pouch_pkt's
 	// offset must point to the same address
@@ -115,7 +116,7 @@ void pouch_free_request(pouch_request *pr){
 	}if (pr->url){				// free URL string
 		free(pr->url);
 	}
-	free(pr);					// free structure
+	free(pr);				// free structure
 }
 
 size_t recv_data_callback(char *ptr, size_t size, size_t nmemb, void *data){
@@ -146,6 +147,7 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	 */
 	size_t maxcopysize = nmemb*size;
 	pouch_request *pr = (pouch_request *)data;
+	printf("Data to send: %s\n", pr->req.data);
 	if (pr->req.size > 0){ // only send data if there's data to send
 		size_t tocopy = (pr->req.size > maxcopysize) ? maxcopysize : pr->req.size;
 		memcpy(ptr, pr->req.offset, tocopy);
@@ -194,20 +196,24 @@ pouch_request *pouch_do_request(pouch_request *pr){
 		}
 
 		// empty the response buffer
+		if (pr->resp.data){
+			free(pr->resp.data);
+		}
 		pr->resp.data = NULL;
+
 		pr->resp.size = 0;
 
 		// make the request and store the response
 		pr->curlcode = curl_easy_perform(curl);
 
-		// clean up
-		curl_slist_free_all(headers);	// free headers
-		curl_easy_cleanup(curl);		// clean up the curl object
 	}
 	else{
 		// if we were unable to initialize a CURL object
 		pr->curlcode = 2;
 	}
+	// clean up
+	curl_slist_free_all(headers);	// free headers
+	curl_easy_cleanup(curl);		// clean up the curl object
 
 	// Print the request
 	printf("Sent %s : %s\n", pr->method, pr->url);
@@ -255,3 +261,81 @@ pouch_request *pouch_request_clear_params(pouch_request *pr){
 	}
 	return pr;
 }
+
+char *combine(char *f, char *s, char *sep){
+	/*
+	   Appends the string s to the string f,
+	   with an optional separator sep. If a
+	   seperator is not required, pass NULL
+	   to the sep argument.
+	 */
+	size_t length = strlen(f)+strlen(s);
+	if(sep != NULL){
+		length += strlen(sep);
+	}
+	length++;
+	char buf[length];
+	if(sep){
+		sprintf(buf, "%s%s%s", f, sep, s);
+	}
+	else{
+		sprintf(buf, "%s%s", f, s);
+	}
+	buf[length-1]='\0'; // null terminate
+	if(*f){
+		free(f);
+	}
+	f = (char *)malloc(length);
+	memset(f, '\0', length); // TODO: find out if this is necessary anywhere else
+	memcpy(f, buf, length);
+	return f;
+}
+
+pouch_request *db_get_all(pouch_request *probj, char *server){
+	/*
+	   Return a list of all databases on a
+	   CouchDB server.
+	 */
+	pouch_request_set_method(probj, GET);
+	pouch_request_set_url(probj, server);
+	probj->url = combine(probj->url, "_all_dbs", "/");
+	pouch_do_request(probj);
+	return probj;
+}
+
+pouch_request *db_delete(pouch_request *probj, char *server, char *name){
+	/*
+	   Delete the database /name/ on the CouchDB
+	   server /server/
+	 */
+	pouch_request_set_method(probj, DELETE);
+	pouch_request_set_url(probj, server);
+	probj->url = combine(probj->url, name, "/");
+	pouch_do_request(probj);
+	return probj;
+}
+
+pouch_request *db_create(pouch_request *probj, char *server, char *name){
+	/*
+	   Create the database /name/ on the CouchDB
+	   server /server/
+	 */
+	pouch_request_set_method(probj, PUT);
+	pouch_request_set_url(probj, server);
+	probj->url = combine(probj->url, name, "/");
+	pouch_do_request(probj);
+	return probj;
+}
+
+pouch_request *db_get(pouch_request *probj, char *server, char *name){
+	/*
+	   Get information about the database /name/
+	   on the CouchDB server /server/
+	 */
+	pouch_request_set_method(probj, GET);
+	pouch_request_set_url(probj, server);
+	probj->url = combine(probj->url, name, "/");
+	pouch_do_request(probj);
+	return probj;
+}
+
