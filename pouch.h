@@ -366,4 +366,45 @@ pouch_request *db_get(pouch_request *p_req, char *server, char *name){
 	pr_do(p_req);
 	return p_req;
 }
-
+pouch_request *db_get_changes(pouch_request *pr, char *server, char *name, int since, int limit, char *feed, int heartbeat, int timeout, char *filter, char *include_docs){
+	/*
+	   Return a list of changes to a document
+	   in a CouchDB database.
+	 */
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, name, "/");
+	pr->url = combine(pr->url, "_changes", "/");
+	char tmp[400]; // temporary buffer, 400 was arbitrary
+	if (since != (int)NULL){
+		memset(&tmp, '\0', 400);
+		sprintf(tmp, "%d", since);
+		pr_add_param(pr, "since", tmp);
+	}
+	if (limit != (int)NULL){
+		memset(&tmp, '\0', 400);
+		sprintf(tmp, "%d", limit);
+		pr_add_param(pr, "limit", tmp);
+	}
+	if (feed != (char *)NULL){
+		pr_add_param(pr, "feed", feed);
+	}
+	if (heartbeat != (int)NULL){
+		memset(&tmp, '\0', 400);
+		sprintf(tmp, "%d", heartbeat);
+		pr_add_param(pr, "heartbeat", tmp);
+	}
+	if (timeout != (int)NULL){
+		memset(&tmp, '\0', 400);
+		sprintf(tmp, "%d", timeout);
+		pr_add_param(pr, "timeout", tmp);
+	}
+	if (filter != (char *)NULL){
+		pr_add_param(pr, "filter", filter);
+	}
+	if (include_docs != (char *)NULL){
+		pr_add_param(pr, "include_docs", include_docs);
+	}
+	pr_do(pr);
+	return pr;
+}
