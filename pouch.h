@@ -33,7 +33,7 @@ typedef struct pouch_request {
 	pouch_pkt resp;		// holds response
 } pouch_request;
 
-pouch_request *pouch_init_request(void){
+pouch_request *pr_init(void){
 	/*
 	   Initializes a new pouch_request
 	   object.
@@ -46,7 +46,7 @@ pouch_request *pouch_init_request(void){
 	return pr;
 }
 
-pouch_request *pouch_request_set_method(pouch_request *pr, char *method){
+pouch_request *pr_set_method(pouch_request *pr, char *method){
 	/*
 	   Sets the HTTP method of
 	   a specific request.
@@ -58,7 +58,7 @@ pouch_request *pouch_request_set_method(pouch_request *pr, char *method){
 	memcpy(pr->method, method, length);	 // copy the method
 	return pr;
 }
-pouch_request *pouch_request_set_url(pouch_request *pr, char *url){
+pouch_request *pr_set_url(pouch_request *pr, char *url){
 	/*
 	   Sets the target URL of
 	   a CouchDB request.
@@ -71,7 +71,7 @@ pouch_request *pouch_request_set_url(pouch_request *pr, char *url){
 
 	return pr;
 }
-pouch_request *pouch_request_set_data(pouch_request *pr, char *str){
+pouch_request *pr_set_data(pouch_request *pr, char *str){
 	/*
 	   Sets the data that a request
 	   sends. If the request does not
@@ -90,10 +90,11 @@ pouch_request *pouch_request_set_data(pouch_request *pr, char *str){
 	// offset must point to the same address
 	// in memory as the data pointer does.
 	pr->req.offset = pr->req.data;
+	pr->req.size = length;
 	return pr;
 }
 
-void pouch_free_request(pouch_request *pr){
+void pr_free(pouch_request *pr){
 	/*
 	   Frees any memory that may have been
 	   allocated during the creation / 
@@ -105,12 +106,25 @@ void pouch_free_request(pouch_request *pr){
 	 */
 	if (pr->resp.data){			// free response
 		free(pr->resp.data);
-	}if (pr->resp.offset){
-		free(pr->resp.offset);
+	//}if (pr->resp.offset){
+		//free(pr->resp.offset);
 	}if (pr->req.data){
+		printf("Freeing data\n");
 		free(pr->req.data);		// free request
-	}if (pr->req.offset){
-		free(pr->req.offset);
+pouch_request *pr_clear_data(pouch_request *pr){
+	/*
+	   Removes all data from a request's
+	   data buffer, if it exists.
+	 */
+	if (pr->req.data){
+		free(pr->req.data);
+		pr->req.data = NULL;
+	}
+	pr->req.size = 0;
+	return pr;
+}
+	//}if (pr->req.offset){
+		//free(pr->req.offset);
 	}if (pr->method){			// free method string
 		free(pr->method);
 	}if (pr->url){				// free URL string
@@ -119,6 +133,18 @@ void pouch_free_request(pouch_request *pr){
 	free(pr);				// free structure
 }
 
+pouch_request *pr_clear_data(pouch_request *pr){
+	/*
+	   Removes all data from a request's
+	   data buffer, if it exists.
+	 */
+	if (pr->req.data){
+		free(pr->req.data);
+		pr->req.data = NULL;
+	}
+	pr->req.size = 0;
+	return pr;
+}
 size_t recv_data_callback(char *ptr, size_t size, size_t nmemb, void *data){
 	/*
 	   This callback is used to save responses from CURL requests.
@@ -147,7 +173,6 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	 */
 	size_t maxcopysize = nmemb*size;
 	pouch_request *pr = (pouch_request *)data;
-	printf("Data to send: %s\n", pr->req.data);
 	if (pr->req.size > 0){ // only send data if there's data to send
 		size_t tocopy = (pr->req.size > maxcopysize) ? maxcopysize : pr->req.size;
 		memcpy(ptr, pr->req.offset, tocopy);
@@ -158,7 +183,7 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	return 0;
 }
 
-pouch_request *pouch_do_request(pouch_request *pr){
+pouch_request *pr_do(pouch_request *pr){
 	CURL *curl;	// CURL object to make the requests
 	struct curl_slist *headers = NULL;	// Custom headers for uploading
 	//TODO: put headers in the pouch_request object,
@@ -177,16 +202,19 @@ pouch_request *pouch_do_request(pouch_request *pr){
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);	// where to store the response
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
-		if(pr->req.data && strlen(pr->req.data) > 0){ // check for data upload
+		if(pr->req.data && pr->req.size > 0){ // check for data upload
 			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+				headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
 			}
 			else if(!strncmp(pr->method, POST, 4)){ // POST-specific options
 				curl_easy_setopt(curl, CURLOPT_POST, 1);
 				headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
 				headers = curl_slist_append(headers, "Content-Type: application/json");
-				curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);	// add the custom headers
 			}
+			// add the custom headers
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
 			// let CURL know what data to send
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
@@ -205,7 +233,6 @@ pouch_request *pouch_do_request(pouch_request *pr){
 
 		// make the request and store the response
 		pr->curlcode = curl_easy_perform(curl);
-
 	}
 	else{
 		// if we were unable to initialize a CURL object
@@ -217,8 +244,9 @@ pouch_request *pouch_do_request(pouch_request *pr){
 
 	// Print the request
 	printf("Sent %s : %s\n", pr->method, pr->url);
-	if(pr->req.data && strlen(pr->req.data) > 0){ // check for data upload
+	if(pr->req.data && pr->req.size > 0){ // check for data upload
 		printf("\t%s\n", pr->req.data);
+		pr_clear_data(pr);
 	}
 	printf("Received %d bytes, status = %d\n",
 			(int)pr->resp.size, pr->curlcode);
@@ -226,7 +254,7 @@ pouch_request *pouch_do_request(pouch_request *pr){
 	return pr;
 }
 
-pouch_request *pouch_request_add_param(pouch_request *pr, char *key, char *value){
+pouch_request *pr_add_param(pouch_request *pr, char *key, char *value){
 	/*
 	   Adds a parameter to a request's URL string,
 	   regardless of whether or not other parameters already exist.
@@ -245,7 +273,7 @@ pouch_request *pouch_request_add_param(pouch_request *pr, char *key, char *value
 	strcat(pr->url, "\0");
 	return pr;
 }
-pouch_request *pouch_request_clear_params(pouch_request *pr){
+pouch_request *pr_clear_params(pouch_request *pr){
 	/*
 	   Removes all parameters from a request's URL string,
 	   if they exist. Otherwise, the URL string is left alone.
@@ -291,51 +319,51 @@ char *combine(char *f, char *s, char *sep){
 	return f;
 }
 
-pouch_request *db_get_all(pouch_request *probj, char *server){
+pouch_request *db_get_all(pouch_request *p_req, char *server){
 	/*
 	   Return a list of all databases on a
 	   CouchDB server.
 	 */
-	pouch_request_set_method(probj, GET);
-	pouch_request_set_url(probj, server);
-	probj->url = combine(probj->url, "_all_dbs", "/");
-	pouch_do_request(probj);
-	return probj;
+	pr_set_method(p_req, GET);
+	pr_set_url(p_req, server);
+	p_req->url = combine(p_req->url, "_all_dbs", "/");
+	pr_do(p_req);
+	return p_req;
 }
 
-pouch_request *db_delete(pouch_request *probj, char *server, char *name){
+pouch_request *db_delete(pouch_request *p_req, char *server, char *name){
 	/*
 	   Delete the database /name/ on the CouchDB
 	   server /server/
 	 */
-	pouch_request_set_method(probj, DELETE);
-	pouch_request_set_url(probj, server);
-	probj->url = combine(probj->url, name, "/");
-	pouch_do_request(probj);
-	return probj;
+	pr_set_method(p_req, DELETE);
+	pr_set_url(p_req, server);
+	p_req->url = combine(p_req->url, name, "/");
+	pr_do(p_req);
+	return p_req;
 }
 
-pouch_request *db_create(pouch_request *probj, char *server, char *name){
+pouch_request *db_create(pouch_request *p_req, char *server, char *name){
 	/*
 	   Create the database /name/ on the CouchDB
 	   server /server/
 	 */
-	pouch_request_set_method(probj, PUT);
-	pouch_request_set_url(probj, server);
-	probj->url = combine(probj->url, name, "/");
-	pouch_do_request(probj);
-	return probj;
+	pr_set_method(p_req, PUT);
+	pr_set_url(p_req, server);
+	p_req->url = combine(p_req->url, name, "/");
+	pr_do(p_req);
+	return p_req;
 }
 
-pouch_request *db_get(pouch_request *probj, char *server, char *name){
+pouch_request *db_get(pouch_request *p_req, char *server, char *name){
 	/*
 	   Get information about the database /name/
 	   on the CouchDB server /server/
 	 */
-	pouch_request_set_method(probj, GET);
-	pouch_request_set_url(probj, server);
-	probj->url = combine(probj->url, name, "/");
-	pouch_do_request(probj);
-	return probj;
+	pr_set_method(p_req, GET);
+	pr_set_url(p_req, server);
+	p_req->url = combine(p_req->url, name, "/");
+	pr_do(p_req);
+	return p_req;
 }
 
