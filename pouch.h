@@ -219,3 +219,39 @@ pouch_request *pouch_do_request(pouch_request *pr){
 	printf("\t%s\n", pr->resp.data);
 	return pr;
 }
+
+pouch_request *pouch_request_add_param(pouch_request *pr, char *key, char *value){
+	/*
+	   Adds a parameter to a request's URL string,
+	   regardless of whether or not other parameters already exist.
+	 */
+	pr->url = (char *)realloc(pr->url, // 3: new ? or &, new =, new '\0'
+			strlen(pr->url) + 3 + sizeof(char)*(strlen(key)+strlen(value)));
+	if (strchr(pr->url, '?') == NULL){
+		strcat(pr->url, "?");
+	}
+	else{
+		strcat(pr->url, "&");
+	}
+	strcat(pr->url, key);
+	strcat(pr->url, "=");
+	strcat(pr->url, value);
+	strcat(pr->url, "\0");
+	return pr;
+}
+pouch_request *pouch_request_clear_params(pouch_request *pr){
+	/*
+	   Removes all parameters from a request's URL string,
+	   if they exist. Otherwise, the URL string is left alone.
+	 */
+	char *div;
+	if ( (div = strchr(pr->url, '?')) != NULL){ // if there are any params
+		char *temp = &pr->url[strlen(pr->url)]; // end of the string
+		while (*temp != '?'){
+			*temp = '\0'; // wipe out the old character
+			temp--;	// move back another character
+		}
+		*temp = '\0'; // get rid of the ?
+	}
+	return pr;
+}

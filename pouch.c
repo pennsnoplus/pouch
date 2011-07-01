@@ -8,15 +8,19 @@ int main(int argc, char* argv[]){
 	// create a request object
 	pouch_request *probj = pouch_init_request();
 
-	// setup a PUT request to create a database
-	pouch_request_set_method(probj, PUT);
-	pouch_request_set_url(probj, "http://127.0.0.1:5984/newdb/");
+	pouch_request_set_method(probj, GET);
+	pouch_request_set_url(probj, "http://127.0.0.1:5984/test/first");
+	pouch_request_add_param(probj, "revs", "true");
 
 	// make the request
 	pouch_do_request(probj);
 
+	// add a new param
+	pouch_request_clear_params(probj);
+	pouch_request_add_param(probj, "revs_info", "true");
+
 	// create a new document within the new database
-	pouch_request_set_url(probj, "http://127.0.0.1:5984/newdb/testdoc");
+	//pouch_request_set_url(probj, "http://127.0.0.1:5984/newdb/testdoc");
 	//TODO: probj = pouch_request_set_data(probj, "{}");
 
 	// make the request
@@ -27,14 +31,3 @@ int main(int argc, char* argv[]){
 
 	return 0;
 }
-
-pouch_request *pouch_request_add_param(pouch_request *pr, char *key, char *value){
-	pr->url = (char *)realloc(pr->url, // 3: new ? or &, new =, new '\0'
-			strlen(pr->url) + 3 + sizeof(char)*(strlen(key)+strlen(value)));
-	if (strchr(pr->url, "?") == NULL){
-		strcat(pr->url, "?");
-	}
-	else{
-		strcat(pr->url, "&");
-	}
-}//TODO: FINISH THIS FUNCTION
