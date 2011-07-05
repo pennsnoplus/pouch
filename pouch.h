@@ -72,6 +72,9 @@ pouch_request *pr_set_url(pouch_request *pr, char *url){
 	return pr;
 }
 pouch_request *pr_set_data(pouch_request *pr, char *str){
+	// TODO: figure out if char * is the correct type for data.
+	//		 maybe there should be some weird JSON thing instead,
+	//       or the UTF-8 version of char *.
 	/*
 	   Sets the data that a request
 	   sends. If the request does not
@@ -79,6 +82,8 @@ pouch_request *pr_set_data(pouch_request *pr, char *str){
 	   this function with an empty string,
 	   just refrain from calling the function.
 	 */
+	int isutf8 = is_utf8(str);
+	printf("str is utf-8: %d\n", isutf8);
 	size_t length = strlen(str)+1; // include the '\0' terminator
 	if(pr->req.data)	// free older data
 		free(pr->req.data);
@@ -106,19 +111,19 @@ void pr_free(pouch_request *pr){
 	 */
 	if (pr->resp.data){			// free response
 		free(pr->resp.data);
-	//}if (pr->resp.offset){
+		//}if (pr->resp.offset){
 		//free(pr->resp.offset);
-	}if (pr->req.data){
-		printf("Freeing data\n");
-		free(pr->req.data);		// free request
+}if (pr->req.data){
+	printf("Freeing data\n");
+	free(pr->req.data);		// free request
 	//}if (pr->req.offset){
-		//free(pr->req.offset);
+	//free(pr->req.offset);
 	}if (pr->method){			// free method string
 		free(pr->method);
 	}if (pr->url){				// free URL string
 		free(pr->url);
 	}
-	free(pr);				// free structure
+free(pr);				// free structure
 }
 
 pouch_request *pr_clear_data(pouch_request *pr){
@@ -185,15 +190,17 @@ pouch_request *pr_do(pouch_request *pr){
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
 		curl_easy_setopt(curl, CURLOPT_URL, pr->url);						// where to send this request
 		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
-		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3);					// Timeout after 3 seconds
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2);					// Timeouts
 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);	// where to store the response
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
 		if(pr->req.data && pr->req.size > 0){ // check for data upload
 			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
+				printf("DOING A PUT=n");
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-				headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
+				headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded;charset=UTF-8");
 			}
 			else if(!strncmp(pr->method, POST, 4)){ // POST-specific options
 				curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -216,7 +223,6 @@ pouch_request *pr_do(pouch_request *pr){
 			free(pr->resp.data);
 		}
 		pr->resp.data = NULL;
-
 		pr->resp.size = 0;
 
 		// make the request and store the response
@@ -305,6 +311,8 @@ char *combine(char *f, char *s, char *sep){
 	memset(f, '\0', length); // TODO: find out if this is necessary anywhere else
 	memcpy(f, buf, length);
 	return f;
+	// TODO: figure out why I have to return f, instead of it being modified in place.
+	// 		 If char *f became char **f, I don't think I'd need to return anything.
 }
 
 pouch_request *db_get_all(pouch_request *p_req, char *server){
@@ -319,42 +327,42 @@ pouch_request *db_get_all(pouch_request *p_req, char *server){
 	return p_req;
 }
 
-pouch_request *db_delete(pouch_request *p_req, char *server, char *name){
+pouch_request *db_delete(pouch_request *p_req, char *server, char *db){
 	/*
-	   Delete the database /name/ on the CouchDB
+	   Delete the database /db/ on the CouchDB
 	   server /server/
 	 */
 	pr_set_method(p_req, DELETE);
 	pr_set_url(p_req, server);
-	p_req->url = combine(p_req->url, name, "/");
+	p_req->url = combine(p_req->url, db, "/");
 	pr_do(p_req);
 	return p_req;
 }
 
-pouch_request *db_create(pouch_request *p_req, char *server, char *name){
+pouch_request *db_create(pouch_request *p_req, char *server, char *db){
 	/*
-	   Create the database /name/ on the CouchDB
+	   Create the database /db/ on the CouchDB
 	   server /server/
 	 */
 	pr_set_method(p_req, PUT);
 	pr_set_url(p_req, server);
-	p_req->url = combine(p_req->url, name, "/");
+	p_req->url = combine(p_req->url, db, "/");
 	pr_do(p_req);
 	return p_req;
 }
 
-pouch_request *db_get(pouch_request *p_req, char *server, char *name){
+pouch_request *db_get(pouch_request *p_req, char *server, char *db){
 	/*
-	   Get information about the database /name/
+	   Get information about the database /db/
 	   on the CouchDB server /server/
 	 */
 	pr_set_method(p_req, GET);
 	pr_set_url(p_req, server);
-	p_req->url = combine(p_req->url, name, "/");
+	p_req->url = combine(p_req->url, db, "/");
 	pr_do(p_req);
 	return p_req;
 }
-pouch_request *db_get_changes(pouch_request *pr, char *server, char *name){
+pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
 	//, int since, int limit, char *feed, int heartbeat, int timeout, char *filter, char *include_docs){
 	/*
 	   Return a list of changes to a document
@@ -363,8 +371,87 @@ pouch_request *db_get_changes(pouch_request *pr, char *server, char *name){
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, name, "/");
+	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, "_changes", "/");
 	pr_do(pr);
 	return pr;
+}
+
+int is_utf8(const char * string)
+{
+	if(!string)
+		return 0;
+
+	const unsigned char * bytes = (const unsigned char *)string;
+	while(*bytes)
+	{
+		if(     (// ASCII
+					bytes[0] == 0x09 ||
+					bytes[0] == 0x0A ||
+					bytes[0] == 0x0D ||
+					(0x20 <= bytes[0] && bytes[0] <= 0x7E)
+				)
+		  ) {
+			bytes += 1;
+			continue;
+		}
+
+		if(     (// non-overlong 2-byte
+					(0xC2 <= bytes[0] && bytes[0] <= 0xDF) &&
+					(0x80 <= bytes[1] && bytes[1] <= 0xBF)
+				)
+		  ) {
+			bytes += 2;
+			continue;
+		}
+
+		if(     (// excluding overlongs
+					bytes[0] == 0xE0 &&
+					(0xA0 <= bytes[1] && bytes[1] <= 0xBF) &&
+					(0x80 <= bytes[2] && bytes[2] <= 0xBF)
+				) ||
+				(// straight 3-byte
+				 ((0xE1 <= bytes[0] && bytes[0] <= 0xEC) ||
+				  bytes[0] == 0xEE ||
+				  bytes[0] == 0xEF) &&
+				 (0x80 <= bytes[1] && bytes[1] <= 0xBF) &&
+				 (0x80 <= bytes[2] && bytes[2] <= 0xBF)
+				) ||
+				(// excluding surrogates
+				 bytes[0] == 0xED &&
+				 (0x80 <= bytes[1] && bytes[1] <= 0x9F) &&
+				 (0x80 <= bytes[2] && bytes[2] <= 0xBF)
+				)
+		  ) {
+			bytes += 3;
+			continue;
+		}
+
+		if(     (// planes 1-3
+					bytes[0] == 0xF0 &&
+					(0x90 <= bytes[1] && bytes[1] <= 0xBF) &&
+					(0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
+					(0x80 <= bytes[3] && bytes[3] <= 0xBF)
+				) ||
+				(// planes 4-15
+				 (0xF1 <= bytes[0] && bytes[0] <= 0xF3) &&
+				 (0x80 <= bytes[1] && bytes[1] <= 0xBF) &&
+				 (0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
+				 (0x80 <= bytes[3] && bytes[3] <= 0xBF)
+				) ||
+				(// plane 16
+				 bytes[0] == 0xF4 &&
+				 (0x80 <= bytes[1] && bytes[1] <= 0x8F) &&
+				 (0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
+				 (0x80 <= bytes[3] && bytes[3] <= 0xBF)
+				)
+		  ) {
+			bytes += 4;
+			continue;
+		}
+
+		return 0;
+	}
+
+	return 1;
 }
