@@ -111,18 +111,6 @@ void pr_free(pouch_request *pr){
 	}if (pr->req.data){
 		printf("Freeing data\n");
 		free(pr->req.data);		// free request
-pouch_request *pr_clear_data(pouch_request *pr){
-	/*
-	   Removes all data from a request's
-	   data buffer, if it exists.
-	 */
-	if (pr->req.data){
-		free(pr->req.data);
-		pr->req.data = NULL;
-	}
-	pr->req.size = 0;
-	return pr;
-}
 	//}if (pr->req.offset){
 		//free(pr->req.offset);
 	}if (pr->method){			// free method string
