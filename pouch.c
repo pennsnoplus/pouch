@@ -29,7 +29,7 @@ int main(int argc, char* argv[]){
 	// get info on the new datase
 	pr = db_get(pr, server, newdb);
 	// show changes
-	pr = db_get_changes(pr, server, newdb, 0, (int)NULL, "normal", 60000, 60000, (char *)NULL, "false");
+	pr = db_get_changes(pr, server, newdb);
 	// show all DBs
 	pr = db_get_all(pr, server);
 	// delete the new database
