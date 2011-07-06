@@ -3,6 +3,9 @@
 #include <string.h>
 
 #include "pouch.h"
+#include "json.h"
+#include "json.c"
+
 /*
 	Database API:
 	-------------------------------
@@ -138,17 +141,30 @@ TODO: change all wrappers so that instead of performing the
 	//char *server = "http://127.0.0.1:5984";
 	char *server = "https://peterldowns:2rlz54NeO3@peterldowns.cloudant.com";
 	char *newdb = "testdb";
-	char *maxrevs = "500000";
-	char *json = "{\"age\":12}";
+	
+	// create some json data
+	JsonNode *json_obj = json_mkobject();
+	JsonNode *json_arr = json_mkarray();
+	char *key = "C";
+	char *val1 = "one hell of a language";
+	int val2 = 4;
+	json_append_element(json_arr, json_mkstring(val1));
+	json_append_element(json_arr, json_mknumber(val2));
+	json_append_member(json_obj, key, json_arr);
+
+	char *datastr = json_encode(json_obj);
+	printf("JSON data: %s\n", datastr);
 	
 	// create a pouch_request* object
 	// 		to hold request responses
 	pouch_request *pr = pr_init();
 	
-	pr = doc_put(pr, server, newdb, "docid", json);
 	// create a new database
 	pr = db_create(pr, server, newdb);
-	pr = doc_put(pr, server, newdb, "newid", "{\"_id\":\"testing\",\"_rev\":\"2-8a0e060e92a3e9ea8f5f11bd0249ec18\",\"asdf\":null}");
+	// create a new document
+	pr = doc_put(pr, server, newdb, "docid", datastr);
+
+
 	// get info on the new datase
 	pr = db_get(pr, server, newdb);
 	// show changes
@@ -156,7 +172,7 @@ TODO: change all wrappers so that instead of performing the
 	// show all DBs
 	pr = db_get_all(pr, server);
 	// delete the new database
-	pr = db_delete(pr, server, newdb);
+	//pr = db_delete(pr, server, newdb);
 	// show all DBs
 	pr = db_get_all(pr, server);
 

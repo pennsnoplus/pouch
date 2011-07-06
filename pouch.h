@@ -84,12 +84,12 @@ pouch_request *pr_set_data(pouch_request *pr, char *str){
 	 */
 	int isutf8 = is_utf8(str);
 	printf("str is utf-8: %d\n", isutf8);
-	size_t length = strlen(str)+1; // include the '\0' terminator
+	size_t length = strlen(str); // include the '\0' terminator
 	if(pr->req.data)	// free older data
 		free(pr->req.data);
 	pr->req.data = (char *)malloc(length);	// allocate space
 	memcpy(pr->req.data, str, length);	// copy it over
-	pr->req.data[strlen(pr->req.data)] = '\0';
+	//pr->req.data[strlen(pr->req.data)] = '\0';
 	// Because of the way CURL sends data,
 	// before sending the pouch_pkt's
 	// offset must point to the same address
@@ -172,6 +172,7 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	if (pr->req.size > 0){ // only send data if there's data to send
 		size_t tocopy = (pr->req.size > maxcopysize) ? maxcopysize : pr->req.size;
 		memcpy(ptr, pr->req.offset, tocopy);
+		printf("ptr: %s\n", (char *)ptr);
 		pr->req.offset += tocopy;	// advance our offset by the number of bytes already sent
 		pr->req.size -= tocopy;	//next time there are tocopy fewer bytes to copy
 		return tocopy;
@@ -189,27 +190,56 @@ pouch_request *pr_do(pouch_request *pr){
 	curl = curl_easy_init();
 
 	if(curl){
+
+		curl_easy_setopt(curl, CURLOPT_URL, pr->url);
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
+		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+		printf("%s : %s\n", pr->method, pr->url);
+		if (!strcmp("PUT", pr->method)){
+			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+		}
+		else {
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);
+		}
+
+		if (pr->req.data && pr->req.size > 0){
+			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
+			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
+		}
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pillowtalk-agent/0.1");
+
+		pr->curlcode = curl_easy_perform(curl);
+
+		
+
+		/*
 		// setup the CURL object/request
 		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
 		curl_easy_setopt(curl, CURLOPT_URL, pr->url);						// where to send this request
-		//curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
+		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
 		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2);					// Timeouts
 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);	// where to store the response
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
+		
+		printf("pr->req.size: %d\n", (int)pr->req.size);
 		if(pr->req.data && pr->req.size > 0){ // check for data upload
+			printf("sending data\n");
+			printf("data: %s\n", pr->req.data);
 			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-				//headers = curl_slist_append(headers, "Content-Type: application/json;charset=utf-8");
+				headers = curl_slist_append(headers, "Content-Type: application/json;charset=utf-8");
 			}
 			else if(!strncmp(pr->method, POST, 4)){ // POST-specific options
 				curl_easy_setopt(curl, CURLOPT_POST, 1);
-				//headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
-				//headers = curl_slist_append(headers, "Content-Type: application/json");
+				headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
+				headers = curl_slist_append(headers, "Content-Type: application/json");
 			}
 			// add the custom headers
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -231,6 +261,7 @@ pouch_request *pr_do(pouch_request *pr){
 
 		// make the request and store the response
 		pr->curlcode = curl_easy_perform(curl);
+		*/
 	}
 	else{
 		// if we were unable to initialize a CURL object
