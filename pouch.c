@@ -17,17 +17,6 @@
 	pouch_request *db_delete(pouch_request *p_req, char *server, char *db);
 	pouch_request *db_get_all(pouch_request *p_req, char *server);
 */
-/*
-
-pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
-	pr_set_method(pr, GET);
-	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, "_changes", "/");
-	pr_do(pr);
-	return pr;
-}
-*/
 
 pouch_request * doc_get(pouch_request *pr, char *server, char *db, char *id){
 	/*
@@ -138,9 +127,12 @@ TODO: change all wrappers so that instead of performing the
 	  lets the user add custom headers whenever they want,
 	  or set specific options or parameters.
 	  */
-	//char *server = "http://127.0.0.1:5984";
+
+	// define strings for connecting to the database
 	char *server = "https://peterldowns:2rlz54NeO3@peterldowns.cloudant.com";
-	char *newdb = "testdb";
+	char *newdb = "a_database";
+	char *docid = "ff345";
+
 	
 	// create some json data
 	JsonNode *json_obj = json_mkobject();
@@ -151,30 +143,43 @@ TODO: change all wrappers so that instead of performing the
 	json_append_element(json_arr, json_mkstring(val1));
 	json_append_element(json_arr, json_mknumber(val2));
 	json_append_member(json_obj, key, json_arr);
-
 	char *datastr = json_encode(json_obj);
 	printf("JSON data: %s\n", datastr);
 	
 	// create a pouch_request* object
-	// 		to hold request responses
 	pouch_request *pr = pr_init();
-	
+	JsonNode *resp;
+
+	// list all of the databases
+	pr = db_get_all(pr, server);
+	resp = json_decode(pr->resp.data);
+
 	// create a new database
 	pr = db_create(pr, server, newdb);
-	// create a new document
-	pr = doc_put(pr, server, newdb, "docid", datastr);
-
-
-	// get info on the new datase
+	
+	// get info on the new database
 	pr = db_get(pr, server, newdb);
-	// show changes
-	pr = db_get_changes(pr, server, newdb);
+
+	// create a new document
+	pr = doc_put(pr, server, newdb, docid, datastr);
+
+	// create a second new document
+	pr = doc_post(pr, server, newdb, datastr);
+
+	// get info on the new document
+	pr = doc_get_info(pr, server, newdb, docid);
+
+	// get the new document
+	pr = doc_get(pr, server, newdb, docid);
+
 	// show all DBs
 	pr = db_get_all(pr, server);
+
 	// delete the new database
 	//pr = db_delete(pr, server, newdb);
+	
 	// show all DBs
-	pr = db_get_all(pr, server);
+	//pr = db_get_all(pr, server);
 
 	// cleanup
 	pr_free(pr);
