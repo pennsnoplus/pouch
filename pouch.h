@@ -6,12 +6,12 @@
 #define HEAD "HEAD"
 #define COPY "COPY"
 #define DELETE "DELETE"
-	/*
+/*
 TODO: change all wrappers so that instead of performing the
 request, they just return an initialized object. This
 lets the user add custom headers whenever they want,
 or set specific options or parameters.
-	 */
+ */
 
 typedef struct pouch_pkt {
 	/*
@@ -32,6 +32,7 @@ typedef struct pouch_request {
 	   save the response, as
 	   well as any error codes.
 	 */
+	struct curl_slist *headers;	// Custom headers for uploading
 	char *method;		// HTTP method
 	char *url;			// Destination (e.g., "http://127.0.0.1:5984/test");
 	CURLcode curlcode;	// CURL request status holder
@@ -122,6 +123,8 @@ void pr_free(pouch_request *pr){
 		free(pr->method);
 	}if (pr->url){				// free URL string
 		free(pr->url);
+	}if (pr->headers){
+		curl_slist_free_all(pr->headers);	// free headers
 	}
 	free(pr);				// free structure
 }
@@ -181,7 +184,7 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 
 pouch_request *pr_do(pouch_request *pr){
 	CURL *curl;	// CURL object to make the requests
-	struct curl_slist *headers = NULL;	// Custom headers for uploading
+	pr->headers= NULL;	// Custom headers for uploading
 	//TODO: put headers in the pouch_request object,
 	//		so that uploads and stuff work correctly
 
@@ -219,9 +222,9 @@ pouch_request *pr_do(pouch_request *pr){
 			}
 
 			// add the custom headers
-			headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
-			headers = curl_slist_append(headers, "Content-Type: application/json");
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			pr_add_headers(pr, "Transfer-Encoding: chunked");
+			pr_add_headers(pr, "Content-Type: application/json;charset:utf-8;");
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, pr->headers);
 
 			// let CURL know what data to send
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
@@ -236,7 +239,7 @@ pouch_request *pr_do(pouch_request *pr){
 		pr->curlcode = 2;
 	}
 	// clean up
-	curl_slist_free_all(headers);	// free headers
+	curl_slist_free_all(pr->headers);	// free headers
 	curl_easy_cleanup(curl);		// clean up the curl object
 
 	// Print the response
@@ -319,7 +322,6 @@ pouch_request *get_all_dbs(pouch_request *p_req, char *server){
 	pr_set_method(p_req, GET);
 	pr_set_url(p_req, server);
 	p_req->url = combine(p_req->url, "_all_dbs", "/");
-	pr_do(p_req);
 	return p_req;
 }
 
@@ -331,7 +333,6 @@ pouch_request *db_delete(pouch_request *p_req, char *server, char *db){
 	pr_set_method(p_req, DELETE);
 	pr_set_url(p_req, server);
 	p_req->url = combine(p_req->url, db, "/");
-	pr_do(p_req);
 	return p_req;
 }
 
@@ -343,7 +344,6 @@ pouch_request *db_create(pouch_request *p_req, char *server, char *db){
 	pr_set_method(p_req, PUT);
 	pr_set_url(p_req, server);
 	p_req->url = combine(p_req->url, db, "/");
-	pr_do(p_req);
 	return p_req;
 }
 
@@ -355,7 +355,6 @@ pouch_request *db_get(pouch_request *p_req, char *server, char *db){
 	pr_set_method(p_req, GET);
 	pr_set_url(p_req, server);
 	p_req->url = combine(p_req->url, db, "/");
-	pr_do(p_req);
 	return p_req;
 }
 pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
@@ -368,7 +367,6 @@ pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
 	pr_set_url(pr, server);
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, "_changes", "/");
-	pr_do(pr);
 	return pr;
 }
 pouch_request * doc_get(pouch_request *pr, char *server, char *db, char *id){
@@ -380,17 +378,9 @@ TODO: URL escape database and document names (/'s become %2F's)
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	/*
-TODO: would it be right/wrong to include a "build_url" method? something like
-void build_url(char *dest, char *serv, char *db, char *id);
-	 */
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
-	pr_do(pr);
 	return pr;
-	/*
-TODO: change every instance of pr_do(pr); return pr; to return pr_do(pr);
-	 */
 }
 pouch_request *doc_get_rev(pouch_request *pr, char *server, char *db, char *id, char *rev){
 	/*
@@ -401,7 +391,6 @@ pouch_request *doc_get_rev(pouch_request *pr, char *server, char *db, char *id, 
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
 	pr_add_param(pr, "rev", rev);
-	pr_do(pr);
 	return pr;
 }
 pouch_request *doc_get_all_revs(pouch_request *pr, char *server, char *db, char *id){
@@ -416,7 +405,6 @@ pouch_request *doc_get_all_revs(pouch_request *pr, char *server, char *db, char 
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
 	pr_add_param(pr, "revs", "true");
-	pr_do(pr);
 	return pr;
 }
 pouch_request *doc_get_info(pouch_request *pr, char *server, char *db, char *id){
@@ -431,7 +419,6 @@ TODO: figure out why HEAD requests time out without a response from the couchDB 
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
 	printf("HEAD to %s\n", pr->url);
-	pr_do(pr);
 	return pr;
 }
 pouch_request *doc_put(pouch_request *pr, char *server, char *db, char *id, char *data){
@@ -447,7 +434,6 @@ pouch_request *doc_put(pouch_request *pr, char *server, char *db, char *id, char
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
 	pr_set_data(pr, data);
-	pr_do(pr);
 	return pr;
 }
 pouch_request *doc_post(pouch_request *pr, char *server, char *db, char *data){
@@ -458,7 +444,6 @@ pouch_request *doc_post(pouch_request *pr, char *server, char *db, char *data){
 	pr_set_url(pr, server);
 	pr->url = combine(pr->url, db, "/");
 	pr_set_data(pr, data);
-	pr_do(pr);
 	return pr;
 }
 pouch_request *get_all_docs(pouch_request *pr, char *server, char *db){
@@ -469,7 +454,6 @@ pouch_request *get_all_docs(pouch_request *pr, char *server, char *db){
 	pr_set_url(pr, server);
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, "_all_docs", "/");
-	pr_do(pr);
 	return pr;
 }
 pouch_request *get_all_docs_by_seq(pouch_request *pr, char *server, char *db){
@@ -481,7 +465,6 @@ pouch_request *get_all_docs_by_seq(pouch_request *pr, char *server, char *db){
 	pr_set_url(pr, server);
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, "_all_docs_by_seq", "/");
-	pr_do(pr);
 	return pr;
 }
 pouch_request *doc_get_attachment(pouch_request *pr, char *server, char *db, char *id, char *name){
@@ -490,6 +473,19 @@ pouch_request *doc_get_attachment(pouch_request *pr, char *server, char *db, cha
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
 	pr->url = combine(pr->url, name, "/");
-	pr_do(pr);
+	return pr;
+}
+char *url_escape(CURL *curl, char *str){
+	/*
+	   URL escapes a string. Use this to 
+	   escape database names.
+	 */
+	return curl_easy_escape(curl, str, strlen(str));
+}
+pouch_request *pr_add_header(pouch_request *pr, char *h){
+	/*
+	   Add a custom header to a request.
+	 */
+	pr->headers = curl_slist_append(pr->headers, h);
 	return pr;
 }
