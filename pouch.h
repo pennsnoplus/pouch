@@ -40,6 +40,14 @@ typedef struct pouch_request {
 	pouch_pkt resp;		// holds response
 } pouch_request;
 
+pouch_request *pr_add_header(pouch_request *pr, char *h){
+	/*
+	   Add a custom header to a request.
+	 */
+	pr->headers = curl_slist_append(pr->headers, h);
+	return pr;
+}
+
 pouch_request *pr_init(void){
 	/*
 	   Initializes a new pouch_request
@@ -79,9 +87,6 @@ pouch_request *pr_set_url(pouch_request *pr, char *url){
 	return pr;
 }
 pouch_request *pr_set_data(pouch_request *pr, char *str){
-	// TODO: figure out if char * is the correct type for data.
-	//		 maybe there should be some weird JSON thing instead,
-	//       or the UTF-8 version of char *.
 	/*
 	   Sets the data that a request
 	   sends. If the request does not
@@ -89,19 +94,20 @@ pouch_request *pr_set_data(pouch_request *pr, char *str){
 	   this function with an empty string,
 	   just refrain from calling the function.
 	 */
-	size_t length = strlen(str); // DO NOT include the '\0' terminator
-	if(pr->req.data)	// free older data
+	size_t length = strlen(str);
+	if(pr->req.data){	// free older data
 		free(pr->req.data);
-	pr->req.data = (char *)malloc(length);	// allocate space
-	memcpy(pr->req.data, str, length);	// copy it over
-	// DO NOT NULL TERMINATE THE JSON STRINGS. EVER.
+	}
+	pr->req.data = (char *)malloc(length+1);	// allocate space, include '\0'
+	memset(pr->req.data, '\0', length+1);		// write nulls to the new space
+	memcpy(pr->req.data, str, length);	// copy over the data
 
 	// Because of the way CURL sends data,
 	// before sending the pouch_pkt's
 	// offset must point to the same address
 	// in memory as the data pointer does.
 	pr->req.offset = pr->req.data;
-	pr->req.size = length;
+	pr->req.size = length; // do not send the last '\0' - JSON is not null terminated
 	return pr;
 }
 
@@ -222,8 +228,8 @@ pouch_request *pr_do(pouch_request *pr){
 			}
 
 			// add the custom headers
-			pr_add_headers(pr, "Transfer-Encoding: chunked");
-			pr_add_headers(pr, "Content-Type: application/json;charset:utf-8;");
+			pr_add_header(pr, "Transfer-Encoding: chunked");
+			pr_add_header(pr, "Content-Type: application/json");
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, pr->headers);
 
 			// let CURL know what data to send
@@ -481,11 +487,4 @@ char *url_escape(CURL *curl, char *str){
 	   escape database names.
 	 */
 	return curl_easy_escape(curl, str, strlen(str));
-}
-pouch_request *pr_add_header(pouch_request *pr, char *h){
-	/*
-	   Add a custom header to a request.
-	 */
-	pr->headers = curl_slist_append(pr->headers, h);
-	return pr;
 }

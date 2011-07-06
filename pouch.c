@@ -10,7 +10,7 @@ int main(int argc, char* argv[]){
 
 	// define strings for connecting to the database
 	char *server = "https://peterldowns:2rlz54NeO3@peterldowns.cloudant.com";
-	char *newdb = "a_database";
+	char *newdb = "a_databooohithisispeter";
 	char *docid = "ff345";
 
 
@@ -25,6 +25,7 @@ int main(int argc, char* argv[]){
 	json_append_member(json_obj, key, json_arr);
 	json_append_member(json_obj, "first?", json_mkstring("FIRST!!!1111!1!11"));
 	char *datastr = json_encode(json_obj);
+	printf("datastr = %s\n", datastr);
 
 	// create a pouch_request* object
 	pouch_request *pr = pr_init();
@@ -32,43 +33,53 @@ int main(int argc, char* argv[]){
 
 	// list all of the databases
 	pr = get_all_dbs(pr, server);
+	pr_do(pr);
 	resp = json_decode(pr->resp.data);
 	getchar();
 
 	// create a new database
 	pr = db_create(pr, server, newdb);
+	pr_do(pr);
 	getchar();
 
 	// get info on the new database
 	pr = db_get(pr, server, newdb);
+	pr_do(pr);
 	getchar();
 
 	// create a new document
 	pr = doc_put(pr, server, newdb, docid, datastr);
+	pr_do(pr);
 	getchar();
 
 	// create a second new document
 	pr = doc_post(pr, server, newdb, datastr);
+	pr_do(pr);
 	getchar();
 
 	// get info on the new document
 	pr = doc_get_info(pr, server, newdb, docid);
+	pr_do(pr);
 	getchar();
 
 	// get the new document
 	pr = doc_get(pr, server, newdb, docid);
+	pr_do(pr);
 	getchar();
 
 	// show all DBs
 	pr = get_all_dbs(pr, server);
+	pr_do(pr);
 	getchar();
 
 	// delete the new database
 	pr = db_delete(pr, server, newdb);
+	pr_do(pr);
 	getchar();
 
 	// show all DBs
 	pr = get_all_dbs(pr, server);
+	pr_do(pr);
 
 	// cleanup
 	pr_free(pr);
