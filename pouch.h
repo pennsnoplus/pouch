@@ -82,14 +82,13 @@ pouch_request *pr_set_data(pouch_request *pr, char *str){
 	   this function with an empty string,
 	   just refrain from calling the function.
 	 */
-	int isutf8 = is_utf8(str);
-	printf("str is utf-8: %d\n", isutf8);
-	size_t length = strlen(str); // include the '\0' terminator
+	size_t length = strlen(str); // DO NOT include the '\0' terminator
 	if(pr->req.data)	// free older data
 		free(pr->req.data);
 	pr->req.data = (char *)malloc(length);	// allocate space
 	memcpy(pr->req.data, str, length);	// copy it over
-	//pr->req.data[strlen(pr->req.data)] = '\0';
+	// DO NOT NULL TERMINATE THE JSON STRINGS. EVER.
+
 	// Because of the way CURL sends data,
 	// before sending the pouch_pkt's
 	// offset must point to the same address
@@ -111,13 +110,8 @@ void pr_free(pouch_request *pr){
 	 */
 	if (pr->resp.data){			// free response
 		free(pr->resp.data);
-		//}if (pr->resp.offset){
-		//free(pr->resp.offset);
-}if (pr->req.data){
-	printf("Freeing data\n");
-	free(pr->req.data);		// free request
-	//}if (pr->req.offset){
-	//free(pr->req.offset);
+	}if (pr->req.data){
+		free(pr->req.data);		// free request
 	}if (pr->method){			// free method string
 		free(pr->method);
 	}if (pr->url){				// free URL string
@@ -346,8 +340,6 @@ char *combine(char *f, char *s, char *sep){
 	memset(f, '\0', length);
 	memcpy(f, buf, length);
 	return f;
-	// TODO: figure out why I have to return f, instead of it being modified in place.
-	// 		 If char *f became char **f, I don't think I'd need to return anything.
 }
 
 pouch_request *db_get_all(pouch_request *p_req, char *server){
@@ -398,7 +390,6 @@ pouch_request *db_get(pouch_request *p_req, char *server, char *db){
 	return p_req;
 }
 pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
-	//, int since, int limit, char *feed, int heartbeat, int timeout, char *filter, char *include_docs){
 	/*
 	   Return a list of changes to a document
 	   in a CouchDB database. Add custom params with
@@ -410,83 +401,4 @@ pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
 	pr->url = combine(pr->url, "_changes", "/");
 	pr_do(pr);
 	return pr;
-}
-
-int is_utf8(const char * string)
-{
-	if(!string)
-		return 0;
-
-	const unsigned char * bytes = (const unsigned char *)string;
-	while(*bytes)
-	{
-		if(     (// ASCII
-					bytes[0] == 0x09 ||
-					bytes[0] == 0x0A ||
-					bytes[0] == 0x0D ||
-					(0x20 <= bytes[0] && bytes[0] <= 0x7E)
-				)
-		  ) {
-			bytes += 1;
-			continue;
-		}
-
-		if(     (// non-overlong 2-byte
-					(0xC2 <= bytes[0] && bytes[0] <= 0xDF) &&
-					(0x80 <= bytes[1] && bytes[1] <= 0xBF)
-				)
-		  ) {
-			bytes += 2;
-			continue;
-		}
-
-		if(     (// excluding overlongs
-					bytes[0] == 0xE0 &&
-					(0xA0 <= bytes[1] && bytes[1] <= 0xBF) &&
-					(0x80 <= bytes[2] && bytes[2] <= 0xBF)
-				) ||
-				(// straight 3-byte
-				 ((0xE1 <= bytes[0] && bytes[0] <= 0xEC) ||
-				  bytes[0] == 0xEE ||
-				  bytes[0] == 0xEF) &&
-				 (0x80 <= bytes[1] && bytes[1] <= 0xBF) &&
-				 (0x80 <= bytes[2] && bytes[2] <= 0xBF)
-				) ||
-				(// excluding surrogates
-				 bytes[0] == 0xED &&
-				 (0x80 <= bytes[1] && bytes[1] <= 0x9F) &&
-				 (0x80 <= bytes[2] && bytes[2] <= 0xBF)
-				)
-		  ) {
-			bytes += 3;
-			continue;
-		}
-
-		if(     (// planes 1-3
-					bytes[0] == 0xF0 &&
-					(0x90 <= bytes[1] && bytes[1] <= 0xBF) &&
-					(0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
-					(0x80 <= bytes[3] && bytes[3] <= 0xBF)
-				) ||
-				(// planes 4-15
-				 (0xF1 <= bytes[0] && bytes[0] <= 0xF3) &&
-				 (0x80 <= bytes[1] && bytes[1] <= 0xBF) &&
-				 (0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
-				 (0x80 <= bytes[3] && bytes[3] <= 0xBF)
-				) ||
-				(// plane 16
-				 bytes[0] == 0xF4 &&
-				 (0x80 <= bytes[1] && bytes[1] <= 0x8F) &&
-				 (0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
-				 (0x80 <= bytes[3] && bytes[3] <= 0xBF)
-				)
-		  ) {
-			bytes += 4;
-			continue;
-		}
-
-		return 0;
-	}
-
-	return 1;
 }
