@@ -6,12 +6,6 @@
 #define HEAD "HEAD"
 #define COPY "COPY"
 #define DELETE "DELETE"
-/*
-TODO: change all wrappers so that instead of performing the
-request, they just return an initialized object. This
-lets the user add custom headers whenever they want,
-or set specific options or parameters.
- */
 
 typedef struct pouch_pkt {
 	/*
@@ -191,8 +185,6 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 pouch_request *pr_do(pouch_request *pr){
 	CURL *curl;	// CURL object to make the requests
 	pr->headers= NULL;	// Custom headers for uploading
-	//TODO: put headers in the pouch_request object,
-	//		so that uploads and stuff work correctly
 
 	// empty the response buffer
 	if (pr->resp.data){
@@ -416,9 +408,6 @@ pouch_request *doc_get_all_revs(pouch_request *pr, char *server, char *db, char 
 pouch_request *doc_get_info(pouch_request *pr, char *server, char *db, char *id){
 	/*
 	   A HEAD request returns basic information about the document, including its current revision.
-	 */
-	/*
-TODO: figure out why HEAD requests time out without a response from the couchDB server
 	 */
 	pr_set_method(pr, HEAD);
 	pr_set_url(pr, server);
