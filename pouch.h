@@ -235,13 +235,15 @@ pouch_request *pr_do(pouch_request *pr){
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
 		}
+		//TODO: add username/password authentication
+		//		(char *user, char *pass inside of pouch_request?)
 
 		if (!strncmp(pr->method, HEAD, 4)){ // HEAD-specific options
 			curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
 			curl_easy_setopt(curl, CURLOPT_HEADER, 1);
 		}
 		else {
-			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);
 		} // THIS FIXED HEAD REQUESTS
 
 		// make the request and store the response
