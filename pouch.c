@@ -6,6 +6,26 @@
 #include "json.h"
 #include "json.c"
 
+char *doc_cur_rev(pouch_request *pr, char *server, char *db, char *id){
+	/*
+	   Returns the current revision of a document
+	 */
+	pr = doc_get_info(pr, server, db, id);
+	pr_do(pr);
+	// at this point, pr->resp.data has all of the header stuff.
+	char *etag_begin = strchr(pr->resp.data, '\"');
+	char *etag_end = strrchr(pr->resp.data, '\"');
+	size_t length = (size_t)(etag_end - (etag_begin+1));
+	char buf[length+1];
+	memcpy(&buf, etag_begin+1, length);
+	buf[length] = '\0';
+	free(pr->resp.data);
+	pr->resp.data = (char *)malloc(length+1);
+	memcpy(pr->resp.data, buf, length);
+	pr->resp.data[length-1] = '\0';
+	return pr->resp.data;
+}
+
 int main(int argc, char* argv[]){
 
 	// define strings for connecting to the database
@@ -48,12 +68,12 @@ int main(int argc, char* argv[]){
 	getchar();
 
 	// create a new document
-	pr = doc_put(pr, server, newdb, docid, datastr);
+	pr = doc_create_id(pr, server, newdb, docid, datastr);
 	pr_do(pr);
 	getchar();
 
 	// create a second new document
-	pr = doc_post(pr, server, newdb, datastr);
+	pr = doc_create(pr, server, newdb, datastr);
 	pr_do(pr);
 	getchar();
 
@@ -61,6 +81,12 @@ int main(int argc, char* argv[]){
 	pr = doc_get_info(pr, server, newdb, docid);
 	pr_do(pr);
 	getchar();
+
+	// get current revision
+	char *rev = doc_cur_rev(pr, server, newdb, docid);
+	printf("Current revision: %s\n", rev);
+	getchar();
+	
 
 	// get the new document
 	pr = doc_get(pr, server, newdb, docid);

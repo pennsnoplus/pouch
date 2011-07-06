@@ -34,6 +34,14 @@ typedef struct pouch_request {
 	pouch_pkt resp;		// holds response
 } pouch_request;
 
+char *url_escape(CURL *curl, char *str){
+	/*
+	   URL escapes a string. Use this to 
+	   escape database names.
+	 */
+	return curl_easy_escape(curl, str, strlen(str));
+}
+
 pouch_request *pr_add_header(pouch_request *pr, char *h){
 	/*
 	   Add a custom header to a request.
@@ -61,7 +69,7 @@ pouch_request *pr_set_method(pouch_request *pr, char *method){
 	   a specific request.
 	 */
 	size_t length = strlen(method)+1; // include '\0' terminator
-	if(pr->method)
+	if (pr->method)
 		free(pr->method);
 	pr->method = (char *)malloc(length); // allocate space
 	memcpy(pr->method, method, length);	 // copy the method
@@ -73,7 +81,7 @@ pouch_request *pr_set_url(pouch_request *pr, char *url){
 	   a CouchDB request.
 	 */
 	size_t length = strlen(url)+1; // include '\0' terminator
-	if(pr->url)	// if there is an older url, get rid of it
+	if (pr->url)	// if there is an older url, get rid of it
 		free(pr->url);
 	pr->url = (char *)malloc(length); // allocate space
 	memcpy(pr->url, url, length);	  // copy the new url
@@ -89,7 +97,7 @@ pouch_request *pr_set_data(pouch_request *pr, char *str){
 	   just refrain from calling the function.
 	 */
 	size_t length = strlen(str);
-	if(pr->req.data){	// free older data
+	if (pr->req.data){	// free older data
 		free(pr->req.data);
 	}
 	pr->req.data = (char *)malloc(length+1);	// allocate space, include '\0'
@@ -195,27 +203,26 @@ pouch_request *pr_do(pouch_request *pr){
 
 	// initialize the CURL object
 	curl = curl_easy_init();
-	if(curl){
+	if (curl){
 		// Print the request
 		printf("%s : %s\n", pr->method, pr->url);
 
 		// setup the CURL object/request
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
 		curl_easy_setopt(curl, CURLOPT_URL, pr->url);						// where to send this request
-		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
 		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2);					// Timeouts
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);	// where to store the response
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
-		if(pr->req.data && pr->req.size > 0){ // check for data upload
+		if (pr->req.data && pr->req.size > 0){ // check for data upload
 			printf("--> %s\n", pr->req.data);
 
-			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
+			if (!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
 			}
-			else if(!strncmp(pr->method, POST, 4)){ // POST-specific options
+			else if (!strncmp(pr->method, POST, 4)){ // POST-specific options
 				curl_easy_setopt(curl, CURLOPT_POST, 1);
 			}
 
@@ -228,6 +235,14 @@ pouch_request *pr_do(pouch_request *pr){
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
 		}
+
+		if (!strncmp(pr->method, HEAD, 4)){ // HEAD-specific options
+			curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
+			curl_easy_setopt(curl, CURLOPT_HEADER, 1);
+		}
+		else {
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
+		} // THIS FIXED HEAD REQUESTS
 
 		// make the request and store the response
 		pr->curlcode = curl_easy_perform(curl);
@@ -291,19 +306,19 @@ char *combine(char *f, char *s, char *sep){
 	   to the sep argument.
 	 */
 	size_t length = strlen(f)+strlen(s);
-	if(sep != NULL){
+	if (sep != NULL){
 		length += strlen(sep);
 	}
 	length++;
 	char buf[length];
-	if(sep){
+	if (sep){
 		sprintf(buf, "%s%s%s", f, sep, s);
 	}
 	else{
 		sprintf(buf, "%s%s", f, s);
 	}
 	buf[length-1]='\0'; // null terminate
-	if(*f){
+	if (*f){
 		free(f);
 	}
 	f = (char *)malloc(length);
@@ -391,7 +406,7 @@ pouch_request *doc_get_rev(pouch_request *pr, char *server, char *db, char *id, 
 	pr_add_param(pr, "rev", rev);
 	return pr;
 }
-pouch_request *doc_get_all_revs(pouch_request *pr, char *server, char *db, char *id){
+pouch_request *doc_get_revs(pouch_request *pr, char *server, char *db, char *id){
 	/*
 	   Finds out what revisions are available for a document.
 	   Returns the current revision of the document, but with
@@ -413,10 +428,9 @@ pouch_request *doc_get_info(pouch_request *pr, char *server, char *db, char *id)
 	pr_set_url(pr, server);
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
-	printf("HEAD to %s\n", pr->url);
 	return pr;
 }
-pouch_request *doc_put(pouch_request *pr, char *server, char *db, char *id, char *data){
+pouch_request *doc_create_id(pouch_request *pr, char *server, char *db, char *id, char *data){
 	/*
 	   Creates a new document with an automatically generated
 	   revision ID. The JSON body must include a _id property
@@ -431,7 +445,7 @@ pouch_request *doc_put(pouch_request *pr, char *server, char *db, char *id, char
 	pr_set_data(pr, data);
 	return pr;
 }
-pouch_request *doc_post(pouch_request *pr, char *server, char *db, char *data){
+pouch_request *doc_create(pouch_request *pr, char *server, char *db, char *data){
 	/*
 	   Creates a new document with a server generated DocID.
 	 */
@@ -463,6 +477,9 @@ pouch_request *get_all_docs_by_seq(pouch_request *pr, char *server, char *db){
 	return pr;
 }
 pouch_request *doc_get_attachment(pouch_request *pr, char *server, char *db, char *id, char *name){
+	/*
+	   Gets an attachment on a document.
+	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
 	pr->url = combine(pr->url, db, "/");
@@ -470,10 +487,34 @@ pouch_request *doc_get_attachment(pouch_request *pr, char *server, char *db, cha
 	pr->url = combine(pr->url, name, "/");
 	return pr;
 }
-char *url_escape(CURL *curl, char *str){
+pouch_request *doc_copy(pouch_request *pr, char *server, char *db, char *id, char *newid, char *revision){
 	/*
-	   URL escapes a string. Use this to 
-	   escape database names.
+	   Copies a document from one id to another,
+	   all server side.
 	 */
-	return curl_easy_escape(curl, str, strlen(str));
+	pr_set_method(pr, COPY);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	// TODO: add support for document overwrite on copy
+	char *headerstr = combine("Destination: ", newid, NULL);
+	if (revision != NULL) {
+		headerstr = combine(headerstr, revision, "?rev=");
+	}
+	pr_add_header(pr, headerstr);
+	free(headerstr);
+	return pr;
+}
+pouch_request *doc_delete(pouch_request *pr, char *server, char *db, char *id, char *rev){
+	/*
+	   Delete a document and all of its attachments.
+	   Must include the revision of the document you
+	   want to delete.
+	   */
+	pr_set_method(pr, DELETE);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	pr_add_param(pr, "rev", rev);
+	return pr;
 }
