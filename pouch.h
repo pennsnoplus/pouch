@@ -117,7 +117,7 @@ void pr_free(pouch_request *pr){
 	}if (pr->url){				// free URL string
 		free(pr->url);
 	}
-free(pr);				// free structure
+	free(pr);				// free structure
 }
 
 pouch_request *pr_clear_data(pouch_request *pr){
@@ -166,7 +166,6 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	if (pr->req.size > 0){ // only send data if there's data to send
 		size_t tocopy = (pr->req.size > maxcopysize) ? maxcopysize : pr->req.size;
 		memcpy(ptr, pr->req.offset, tocopy);
-		printf("ptr: %s\n", (char *)ptr);
 		pr->req.offset += tocopy;	// advance our offset by the number of bytes already sent
 		pr->req.size -= tocopy;	//next time there are tocopy fewer bytes to copy
 		return tocopy;
@@ -180,82 +179,46 @@ pouch_request *pr_do(pouch_request *pr){
 	//TODO: put headers in the pouch_request object,
 	//		so that uploads and stuff work correctly
 
+	// empty the response buffer
+	if (pr->resp.data){
+		free(pr->resp.data);
+	}
+	pr->resp.data = NULL;
+	pr->resp.size = 0;
+
 	// initialize the CURL object
 	curl = curl_easy_init();
-
 	if(curl){
-
-		curl_easy_setopt(curl, CURLOPT_URL, pr->url);
-		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10);
-		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-		printf("%s : %s\n", pr->method, pr->url);
-		if (!strcmp("PUT", pr->method)){
-			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-		}
-		else {
-			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);
-		}
-
-		if (pr->req.data && pr->req.size > 0){
-			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
-			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
-		}
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
-		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pillowtalk-agent/0.1");
-
-		pr->curlcode = curl_easy_perform(curl);
-
-		
-
-		/*
 		// setup the CURL object/request
-		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
 		curl_easy_setopt(curl, CURLOPT_URL, pr->url);						// where to send this request
 		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
 		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2);					// Timeouts
-		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
+		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);	// where to store the response
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
-		
-		printf("pr->req.size: %d\n", (int)pr->req.size);
 		if(pr->req.data && pr->req.size > 0){ // check for data upload
-			printf("sending data\n");
-			printf("data: %s\n", pr->req.data);
 			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-				headers = curl_slist_append(headers, "Content-Type: application/json;charset=utf-8");
 			}
 			else if(!strncmp(pr->method, POST, 4)){ // POST-specific options
 				curl_easy_setopt(curl, CURLOPT_POST, 1);
-				headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
-				headers = curl_slist_append(headers, "Content-Type: application/json");
 			}
+
 			// add the custom headers
+			headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
+			headers = curl_slist_append(headers, "Content-Type: application/json");
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
 			// let CURL know what data to send
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
-
-			// print the data being sent
-			printf("\t%s\n", pr->req.data);
 		}
-
-		// empty the response buffer
-		if (pr->resp.data){
-			free(pr->resp.data);
-		}
-		pr->resp.data = NULL;
-		pr->resp.size = 0;
 
 		// make the request and store the response
 		pr->curlcode = curl_easy_perform(curl);
-		*/
 	}
 	else{
 		// if we were unable to initialize a CURL object
@@ -342,7 +305,7 @@ char *combine(char *f, char *s, char *sep){
 	return f;
 }
 
-pouch_request *db_get_all(pouch_request *p_req, char *server){
+pouch_request *get_all_dbs(pouch_request *p_req, char *server){
 	/*
 	   Return a list of all databases on a
 	   CouchDB server.

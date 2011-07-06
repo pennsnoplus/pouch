@@ -108,7 +108,7 @@ pouch_request *doc_post(pouch_request *pr, char *server, char *db, char *data){
 	pr_do(pr);
 	return pr;
 }
-pouch_request *doc_get_all(pouch_request *pr, char *server, char *db){
+pouch_request *get_all_docs(pouch_request *pr, char *server, char *db){
 	/*
 	   Returns all of the docs in a database.
 	   */
