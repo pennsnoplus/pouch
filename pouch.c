@@ -135,15 +135,17 @@ TODO: change all wrappers so that instead of performing the
 	  lets the user add custom headers whenever they want,
 	  or set specific options or parameters.
 	  */
-	char *server = "http://127.0.0.1:5984";
-	char *newdb = "petersdb";
+	//char *server = "http://127.0.0.1:5984";
+	char *server = "https://peterldowns:2rlz54NeO3@peterldowns.cloudant.com";
+	char *newdb = "testdb";
 	char *maxrevs = "500000";
+	char *json = "{\"age\":12}";
 	
 	// create a pouch_request* object
 	// 		to hold request responses
 	pouch_request *pr = pr_init();
 	
-	pr = doc_get(pr, server, "test", "testing");
+	pr = doc_put(pr, server, newdb, "docid", json);
 	// create a new database
 	pr = db_create(pr, server, newdb);
 	pr = doc_put(pr, server, newdb, "newid", "{\"_id\":\"testing\",\"_rev\":\"2-8a0e060e92a3e9ea8f5f11bd0249ec18\",\"asdf\":null}");

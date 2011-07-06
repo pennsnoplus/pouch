@@ -165,6 +165,9 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 	   and sent, piece by piece.
 	 */
 	size_t maxcopysize = nmemb*size;
+	if (maxcopysize < 1){
+		return 0;
+	}
 	pouch_request *pr = (pouch_request *)data;
 	if (pr->req.size > 0){ // only send data if there's data to send
 		size_t tocopy = (pr->req.size > maxcopysize) ? maxcopysize : pr->req.size;
@@ -187,9 +190,11 @@ pouch_request *pr_do(pouch_request *pr){
 
 	if(curl){
 		// setup the CURL object/request
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
 		curl_easy_setopt(curl, CURLOPT_URL, pr->url);						// where to send this request
-		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
+		//curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);			// choose a method
 		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2);					// Timeouts
 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2);
@@ -198,14 +203,13 @@ pouch_request *pr_do(pouch_request *pr){
 
 		if(pr->req.data && pr->req.size > 0){ // check for data upload
 			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
-				printf("DOING A PUT=n");
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-				headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded;charset=UTF-8");
+				//headers = curl_slist_append(headers, "Content-Type: application/json;charset=utf-8");
 			}
 			else if(!strncmp(pr->method, POST, 4)){ // POST-specific options
 				curl_easy_setopt(curl, CURLOPT_POST, 1);
-				headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
-				headers = curl_slist_append(headers, "Content-Type: application/json");
+				//headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
+				//headers = curl_slist_append(headers, "Content-Type: application/json");
 			}
 			// add the custom headers
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -308,7 +312,7 @@ char *combine(char *f, char *s, char *sep){
 		free(f);
 	}
 	f = (char *)malloc(length);
-	memset(f, '\0', length); // TODO: find out if this is necessary anywhere else
+	memset(f, '\0', length);
 	memcpy(f, buf, length);
 	return f;
 	// TODO: figure out why I have to return f, instead of it being modified in place.
