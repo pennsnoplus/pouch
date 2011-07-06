@@ -42,6 +42,7 @@ char *url_escape(CURL *curl, char *str){
 	return curl_easy_escape(curl, str, strlen(str));
 }
 
+
 pouch_request *pr_add_header(pouch_request *pr, char *h){
 	/*
 	   Add a custom header to a request.
@@ -131,7 +132,7 @@ void pr_free(pouch_request *pr){
 		free(pr->method);
 	}if (pr->url){				// free URL string
 		free(pr->url);
-	}if (pr->headers){
+	}if (pr->headers != NULL){
 		curl_slist_free_all(pr->headers);	// free headers
 	}
 	free(pr);				// free structure
@@ -218,26 +219,20 @@ pouch_request *pr_do(pouch_request *pr){
 
 		if (pr->req.data && pr->req.size > 0){ // check for data upload
 			printf("--> %s\n", pr->req.data);
-
-			if (!strncmp(pr->method, PUT, 3)){ // PUT-specific option
-				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
-			}
-			else if (!strncmp(pr->method, POST, 4)){ // POST-specific options
-				curl_easy_setopt(curl, CURLOPT_POST, 1);
-			}
-
-			// add the custom headers
-			pr_add_header(pr, "Transfer-Encoding: chunked");
-			pr_add_header(pr, "Content-Type: application/json");
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, pr->headers);
-
 			// let CURL know what data to send
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
 		}
 		//TODO: add username/password authentication
 		//		(char *user, char *pass inside of pouch_request?)
-
+		
+		if (!strncmp(pr->method, PUT, 3)){ // PUT-specific option
+			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+		}
+		else if (!strncmp(pr->method, POST, 4)){ // POST-specific options
+			curl_easy_setopt(curl, CURLOPT_POST, 1);
+		}
+	
 		if (!strncmp(pr->method, HEAD, 4)){ // HEAD-specific options
 			curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
 			curl_easy_setopt(curl, CURLOPT_HEADER, 1);
@@ -245,7 +240,12 @@ pouch_request *pr_do(pouch_request *pr){
 		else {
 			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, pr->method);
 		} // THIS FIXED HEAD REQUESTS
-
+		
+		// add the custom headers
+		pr_add_header(pr, "Transfer-Encoding: chunked");
+		pr_add_header(pr, "Content-Type: application/json");
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, pr->headers);
+		
 		// make the request and store the response
 		pr->curlcode = curl_easy_perform(curl);
 	}
@@ -255,6 +255,7 @@ pouch_request *pr_do(pouch_request *pr){
 	}
 	// clean up
 	curl_slist_free_all(pr->headers);	// free headers
+	pr->headers = NULL;
 	curl_easy_cleanup(curl);		// clean up the curl object
 
 	// Print the response
@@ -384,6 +385,40 @@ pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
 	pr->url = combine(pr->url, "_changes", "/");
 	return pr;
 }
+pouch_request *db_get_revs_limit(pouch_request *pr, char *server, char *db){
+	/*
+	   Returns the current maximum number of revisions
+	   allowed for a database.
+	   */
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, "_revs_limit", "/");
+	return pr;
+}
+pouch_request *db_set_revs_limit(pouch_request *pr, char *server, char *db, char *revs){
+	/*
+	   Sets the maximum number of revisions a database
+	   is allowed to have.
+	   */
+	pr_set_method(pr, PUT);
+	pr_set_data(pr, revs);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, "_revs_limit", "/");
+	return pr;
+}
+pouch_request *db_compact(pouch_request *pr, char *server, char *db){
+	/*
+	   Initiates compaction on a database.
+	   */
+	pr_set_method(pr, POST);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, "_compact", "/");
+	return pr;
+}
+	
 pouch_request * doc_get(pouch_request *pr, char *server, char *db, char *id){
 	/*
 	   Retrieves a document.
@@ -519,4 +554,23 @@ pouch_request *doc_delete(pouch_request *pr, char *server, char *db, char *id, c
 	pr->url = combine(pr->url, id, "/");
 	pr_add_param(pr, "rev", rev);
 	return pr;
+}
+char *doc_cur_rev(pouch_request *pr, char *server, char *db, char *id){
+	/*
+	   Returns the current revision of a document.
+	 */
+	pr = doc_get_info(pr, server, db, id);
+	pr_do(pr);
+	// at this point, pr->resp.data has all of the header stuff.
+	char *etag_begin = strchr(pr->resp.data, '\"');
+	char *etag_end = strrchr(pr->resp.data, '\"');
+	size_t length = (size_t)(etag_end - (etag_begin+1));
+	char buf[length+1];
+	memcpy(&buf, etag_begin+1, length);
+	buf[length] = '\0';
+	free(pr->resp.data);
+	pr->resp.data = (char *)malloc(length+1);
+	memcpy(pr->resp.data, buf, length);
+	pr->resp.data[length-1] = '\0';
+	return pr->resp.data;
 }
