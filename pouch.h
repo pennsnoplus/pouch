@@ -6,6 +6,12 @@
 #define HEAD "HEAD"
 #define COPY "COPY"
 #define DELETE "DELETE"
+	/*
+TODO: change all wrappers so that instead of performing the
+request, they just return an initialized object. This
+lets the user add custom headers whenever they want,
+or set specific options or parameters.
+	 */
 
 typedef struct pouch_pkt {
 	/*
@@ -189,6 +195,9 @@ pouch_request *pr_do(pouch_request *pr){
 	// initialize the CURL object
 	curl = curl_easy_init();
 	if(curl){
+		// Print the request
+		printf("%s : %s\n", pr->method, pr->url);
+
 		// setup the CURL object/request
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
 		curl_easy_setopt(curl, CURLOPT_URL, pr->url);						// where to send this request
@@ -200,6 +209,8 @@ pouch_request *pr_do(pouch_request *pr){
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
 		if(pr->req.data && pr->req.size > 0){ // check for data upload
+			printf("--> %s\n", pr->req.data);
+
 			if(!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
 			}
@@ -228,15 +239,10 @@ pouch_request *pr_do(pouch_request *pr){
 	curl_slist_free_all(headers);	// free headers
 	curl_easy_cleanup(curl);		// clean up the curl object
 
-	// Print the request
-	printf("Sent %s : %s\n", pr->method, pr->url);
-	if(pr->req.data && pr->req.size > 0){ // check for data upload
-		printf("\t%s\n", pr->req.data);
-		pr_clear_data(pr);
-	}
+	// Print the response
 	printf("Received %d bytes, status = %d\n",
 			(int)pr->resp.size, pr->curlcode);
-	printf("\t%s\n", pr->resp.data);
+	printf("--> %s\n", pr->resp.data);
 	return pr;
 }
 
@@ -362,6 +368,128 @@ pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
 	pr_set_url(pr, server);
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, "_changes", "/");
+	pr_do(pr);
+	return pr;
+}
+pouch_request * doc_get(pouch_request *pr, char *server, char *db, char *id){
+	/*
+	   Retrieves a document.
+	 */
+	/*
+TODO: URL escape database and document names (/'s become %2F's)
+	 */
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	/*
+TODO: would it be right/wrong to include a "build_url" method? something like
+void build_url(char *dest, char *serv, char *db, char *id);
+	 */
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	pr_do(pr);
+	return pr;
+	/*
+TODO: change every instance of pr_do(pr); return pr; to return pr_do(pr);
+	 */
+}
+pouch_request *doc_get_rev(pouch_request *pr, char *server, char *db, char *id, char *rev){
+	/*
+	   Get a specific revision of a document.
+	 */
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	pr_add_param(pr, "rev", rev);
+	pr_do(pr);
+	return pr;
+}
+pouch_request *doc_get_all_revs(pouch_request *pr, char *server, char *db, char *id){
+	/*
+	   Finds out what revisions are available for a document.
+	   Returns the current revision of the document, but with
+	   an additional field, _revisions, the value being a list
+	   of the available revision IDs.
+	 */
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	pr_add_param(pr, "revs", "true");
+	pr_do(pr);
+	return pr;
+}
+pouch_request *doc_get_info(pouch_request *pr, char *server, char *db, char *id){
+	/*
+	   A HEAD request returns basic information about the document, including its current revision.
+	 */
+	/*
+TODO: figure out why HEAD requests time out without a response from the couchDB server
+	 */
+	pr_set_method(pr, HEAD);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	printf("HEAD to %s\n", pr->url);
+	pr_do(pr);
+	return pr;
+}
+pouch_request *doc_put(pouch_request *pr, char *server, char *db, char *id, char *data){
+	/*
+	   Creates a new document with an automatically generated
+	   revision ID. The JSON body must include a _id property
+	   which contains a unique id. If the document already exists,
+	   and the JSON data body includes a _rev property, then
+	   the document is updated.
+	 */
+	pr_set_method(pr, PUT);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	pr_set_data(pr, data);
+	pr_do(pr);
+	return pr;
+}
+pouch_request *doc_post(pouch_request *pr, char *server, char *db, char *data){
+	/*
+	   Creates a new document with a server generated DocID.
+	 */
+	pr_set_method(pr, POST);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr_set_data(pr, data);
+	pr_do(pr);
+	return pr;
+}
+pouch_request *get_all_docs(pouch_request *pr, char *server, char *db){
+	/*
+	   Returns all of the docs in a database.
+	 */
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, "_all_docs", "/");
+	pr_do(pr);
+	return pr;
+}
+pouch_request *get_all_docs_by_seq(pouch_request *pr, char *server, char *db){
+	/*
+	   Returns all the documents that have been updated or deleted, in the
+	   order that they were modified.
+	 */
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, "_all_docs_by_seq", "/");
+	pr_do(pr);
+	return pr;
+}
+pouch_request *doc_get_attachment(pouch_request *pr, char *server, char *db, char *id, char *name){
+	pr_set_method(pr, GET);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, id, "/");
+	pr->url = combine(pr->url, name, "/");
 	pr_do(pr);
 	return pr;
 }
