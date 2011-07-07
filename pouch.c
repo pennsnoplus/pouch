@@ -7,7 +7,6 @@
 #include "json.c"
 
 int main(int argc, char* argv[]){
-
 	// define strings for connecting to the database
 	char *server = "https://peterldowns:2rlz54NeO3@peterldowns.cloudant.com";
 	char *newdb = "example_db";
@@ -30,7 +29,6 @@ int main(int argc, char* argv[]){
 	json_append_member(json_obj, "first?", json_mkstring("FIRST!!!1111!1!11"));
 	json_append_member(json_obj, "HEP", json_arr2);
 	char *datastr = json_encode(json_obj);
-	printf("datastr = %s\n", datastr);
 
 	// create a pouch_request* object
 	pouch_request *pr = pr_init();
@@ -80,12 +78,18 @@ int main(int argc, char* argv[]){
 	pr_do(pr);
 	getchar();
 
+	// copy a doc to a new id
+	pr = doc_copy(pr, server, newdb, docid, "seconddoc", NULL);
+	pr_do(pr);
+	getchar();
+
 	// create a new attachment
 	char *fname = "king-tut.jpg";
 	pr = doc_add_attachment(pr, server, newdb, fname, fname);
 	pr_do(pr);
 	getchar();
 
+	// create another attachment
 	char *fname2 = "README.md";
 	pr = doc_add_attachment(pr, server, newdb, fname2, fname2);
 	pr_do(pr);

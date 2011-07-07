@@ -323,7 +323,11 @@ char *combine(char *f, char *s, char *sep){
 	   seperator is not required, pass NULL
 	   to the sep argument.
 	 */
-	size_t length = strlen(f)+strlen(s);
+	size_t length = 0;
+	if (*f)
+		length += strlen(f);
+	if (*s)
+		length += strlen(s);
 	if (sep != NULL){
 		length += strlen(sep);
 	}
@@ -550,7 +554,9 @@ pouch_request *doc_copy(pouch_request *pr, char *server, char *db, char *id, cha
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, id, "/");
 	// TODO: add support for document overwrite on copy
-	char *headerstr = combine("Destination: ", newid, NULL);
+	char *headerstr = (char *)malloc(strlen("Destination:")+1);
+	memcpy(headerstr, "Destination:", strlen("Destination:"));
+	headerstr = combine(headerstr, newid, " ");
 	if (revision != NULL) {
 		headerstr = combine(headerstr, revision, "?rev=");
 	}
