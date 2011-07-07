@@ -119,8 +119,7 @@ pouch_request *pr_set_bdata(pouch_request *pr, void *dat, size_t length){
 	if (pr->req.data){
 		free(pr->req.data);
 	}
-	pr->req.data = (char *)malloc(length+1);
-	memset(pr->req.data, '\0', length+1);
+	pr->req.data = (char *)malloc(length);
 	memcpy(pr->req.data, dat, length);
 	pr->req.offset = pr->req.data;
 	pr->req.size = length;
@@ -241,9 +240,11 @@ pouch_request *pr_do(pouch_request *pr){
 		
 		if (!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+			// Note: Content-Type: application/json is automatically assumed
 		}
 		else if (!strncmp(pr->method, POST, 4)){ // POST-specific options
 			curl_easy_setopt(curl, CURLOPT_POST, 1);
+			pr_add_header(pr, "Content-Type: application/json");
 		}
 	
 		if (!strncmp(pr->method, HEAD, 4)){ // HEAD-specific options
@@ -256,7 +257,6 @@ pouch_request *pr_do(pouch_request *pr){
 		
 		// add the custom headers
 		pr_add_header(pr, "Transfer-Encoding: chunked");
-		pr_add_header(pr, "Content-Type: application/json");
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, pr->headers);
 		
 		// make the request and store the response
@@ -267,8 +267,10 @@ pouch_request *pr_do(pouch_request *pr){
 		pr->curlcode = 2;
 	}
 	// clean up
-	curl_slist_free_all(pr->headers);	// free headers
-	pr->headers = NULL;
+	if (pr->headers){
+		curl_slist_free_all(pr->headers);	// free headers
+		pr->headers = NULL;
+	}
 	curl_easy_cleanup(curl);		// clean up the curl object
 
 	// Print the response
@@ -626,9 +628,9 @@ pouch_request *doc_create_attachment(pouch_request *pr, char *server, char *db, 
 		fprintf(stderr, "could not get mimetype\n");
 	}
 
-	char ct[strlen("Content-Type: ")+strlen(mtype)+1];
+	char ct[strlen("Content-Type:")+strlen(mtype)+1];
 	sprintf(ct, "Content-Type: %s", mtype);
-	printf("MIME/CONTENT/TYPE_!_!_!: %s\n", ct);
+	printf("MIME/CONTENT/TYPE_!_!_!:%s\n", ct);
 
 	// finish setting request
 	pr_set_method(pr, PUT);
