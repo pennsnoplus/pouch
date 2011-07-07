@@ -1,4 +1,5 @@
 #include <curl/curl.h>
+#include <sys/stat.h>
 
 #define GET "GET"
 #define PUT "PUT"
@@ -574,4 +575,41 @@ char *doc_cur_rev(pouch_request *pr, char *server, char *db, char *id){
 	memcpy(pr->resp.data, buf, length);
 	pr->resp.data[length] = '\0'; // _!_
 	return pr->resp.data;
+}
+pouch_request *doc_create_attachment(pouch_request *pr, char *server, char *db, char *doc, char *filename){
+	/*
+	   Given a filename, try to read that file and upload it as an attachment to a document.
+	 */
+	// load the file into memory
+	struct stat file_info;
+	FILE *fd = fopen(filename, "rb");
+	if (!fd) {
+		fprintf(stderr, "doc_upload_attachment: could not open file %s\n", filename);
+	}
+	if (fstat(fileno(fd), &file_info) != 0){
+		fprintf(stderr, "doc_upload_attachment: could not fstat file %s\n", filename);
+		return pr;
+		// TODO: include an "error" integer in each pouch_request, to be set
+		//		 by different wrapper functions
+	}
+	// read file into buffer
+	size_t fd_len = file_info.st_size;
+	char fd_buf[fd_len];
+	memset(&fd_buf, '\0', fd_len);
+	fread(fd_buf, fd_len, 1, fd);
+	printf("Read data:\n%s\n", fd_buf);
+	pr_set_data(pr, fd_buf);
+	fclose(fd);
+	// finish setting request
+	pr_set_method(pr, PUT);
+	pr_set_url(pr, server);
+	pr->url = combine(pr->url, db, "/");
+	pr->url = combine(pr->url, doc, "/");
+	pr->url = combine(pr->url, filename, "/");
+	// TODO: add support for adding to existing documents by auto-fetching the rev parameter
+	// pr_add_param(pr, "rev", rev);
+	// TODO: add support for figuring out the mime-type automatically
+	pr_add_header(pr, "Content-Type: text/plain");
+	// TODO: add content-length header
+	return pr;
 }

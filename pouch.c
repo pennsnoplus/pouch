@@ -80,6 +80,12 @@ int main(int argc, char* argv[]){
 	pr_do(pr);
 	getchar();
 
+	// create a new attachment
+	char *fname = "README.md";
+	pr = doc_create_attachment(pr, server, newdb, fname, fname);
+	pr_do(pr);
+	getchar();
+
 	// get revision information
 	pr = doc_get_revs(pr, server, newdb, docid);
 	pr_do(pr);
