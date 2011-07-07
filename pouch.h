@@ -34,6 +34,7 @@ typedef struct pouch_request {
 	CURLcode curlcode;	// CURL request status holder
 	pouch_pkt req;		// holds data to be sent
 	pouch_pkt resp;		// holds response
+	// int error;		// holds an error code
 } pouch_request;
 
 char *url_escape(CURL *curl, char *str){
