@@ -414,6 +414,7 @@ pouch_request *db_compact(pouch_request *pr, char *server, char *db){
 	   */
 	pr_set_method(pr, POST);
 	pr_set_url(pr, server);
+	pr_set_data(pr, "{}");
 	pr->url = combine(pr->url, db, "/");
 	pr->url = combine(pr->url, "_compact", "/");
 	return pr;

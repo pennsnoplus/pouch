@@ -56,9 +56,9 @@ int main(int argc, char* argv[]){
 	getchar();
 
 	// compact the database
-	//pr = db_compact(pr, server, newdb);
-	//pr_do(pr);
-	//getchar();
+	pr = db_compact(pr, server, newdb);
+	pr_do(pr);
+	getchar();
 
 	// get db changes
 	pr = db_get_changes(pr, server, newdb);
@@ -115,7 +115,7 @@ int main(int argc, char* argv[]){
 	getchar();
 
 	// delete a document
-	pr = doc_delete(pr, server, newdb, docid, rev);
+	pr = doc_delete(pr, server, newdb, docid, buf);
 	pr_do(pr);
 	getchar();
 
