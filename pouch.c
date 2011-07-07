@@ -95,6 +95,11 @@ int main(int argc, char* argv[]){
 	pr_do(pr);
 	getchar();
 
+	// get an attachment
+	pr = doc_get_attachment(pr, server, newdb, fname2, fname2);
+	pr_do(pr);
+	getchar();
+
 	// get revision information
 	pr = doc_get_revs(pr, server, newdb, docid);
 	pr_do(pr);
