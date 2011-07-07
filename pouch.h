@@ -1,5 +1,6 @@
 #include <curl/curl.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #define GET "GET"
 #define PUT "PUT"
@@ -112,6 +113,17 @@ pouch_request *pr_set_data(pouch_request *pr, char *str){
 	// in memory as the data pointer does.
 	pr->req.offset = pr->req.data;
 	pr->req.size = length; // do not send the last '\0' - JSON is not null terminated
+	return pr;
+}
+pouch_request *pr_set_bdata(pouch_request *pr, void *dat, size_t length){
+	if (pr->req.data){
+		free(pr->req.data);
+	}
+	pr->req.data = (char *)malloc(length+1);
+	memset(pr->req.data, '\0', length+1);
+	memcpy(pr->req.data, dat, length);
+	pr->req.offset = pr->req.data;
+	pr->req.size = length;
 	return pr;
 }
 
@@ -582,24 +594,42 @@ pouch_request *doc_create_attachment(pouch_request *pr, char *server, char *db, 
 	 */
 	// load the file into memory
 	struct stat file_info;
-	FILE *fd = fopen(filename, "rb");
+	int fd = open(filename, O_RDONLY);
 	if (!fd) {
 		fprintf(stderr, "doc_upload_attachment: could not open file %s\n", filename);
 	}
-	if (fstat(fileno(fd), &file_info) != 0){
-		fprintf(stderr, "doc_upload_attachment: could not fstat file %s\n", filename);
+	if (lstat(filename, &file_info) != 0){
+		fprintf(stderr, "doc_upload_attachment: could not lstat file %s\n", filename);
 		return pr;
 		// TODO: include an "error" integer in each pouch_request, to be set
 		//		 by different wrapper functions
 	}
 	// read file into buffer
 	size_t fd_len = file_info.st_size;
+	printf("File size: %d bytes\n", (int)fd_len);
 	char fd_buf[fd_len];
-	memset(&fd_buf, '\0', fd_len);
-	fread(fd_buf, fd_len, 1, fd);
-	printf("Read data:\n%s\n", fd_buf);
-	pr_set_data(pr, fd_buf);
-	fclose(fd);
+	int numbytes = read(fd, fd_buf, fd_len);
+	printf("Read %d bytes\n", numbytes);
+	pr_set_bdata(pr, (void *)fd_buf, fd_len);
+	close(fd);
+
+	FILE *comres;
+	char combuf[strlen("file --mime-type ")+strlen(filename)+1];
+	sprintf(combuf, "file --mime-type %s", filename);
+	comres = popen(combuf, "r");
+	char comdet[10000];
+	fgets(comdet, 10000, comres);
+	fclose(comres);
+	printf("result of %s=\n\t%s", combuf, comdet);
+	char *mtype;
+	if ( (mtype = strchr(comdet, ' ')) == NULL){
+		fprintf(stderr, "could not get mimetype\n");
+	}
+
+	char ct[strlen("Content-Type: ")+strlen(mtype)+1];
+	sprintf(ct, "Content-Type: %s", mtype);
+	printf("MIME/CONTENT/TYPE_!_!_!: %s\n", ct);
+
 	// finish setting request
 	pr_set_method(pr, PUT);
 	pr_set_url(pr, server);
@@ -609,7 +639,8 @@ pouch_request *doc_create_attachment(pouch_request *pr, char *server, char *db, 
 	// TODO: add support for adding to existing documents by auto-fetching the rev parameter
 	// pr_add_param(pr, "rev", rev);
 	// TODO: add support for figuring out the mime-type automatically
-	pr_add_header(pr, "Content-Type: text/plain");
+	//pr_add_header(pr, "Content-Type: text/plain");
+	pr_add_header(pr, ct);
 	// TODO: add content-length header
 	return pr;
 }
