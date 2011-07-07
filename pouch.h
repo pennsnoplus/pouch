@@ -564,13 +564,13 @@ char *doc_cur_rev(pouch_request *pr, char *server, char *db, char *id){
 	// at this point, pr->resp.data has all of the header stuff.
 	char *etag_begin = strchr(pr->resp.data, '\"');
 	char *etag_end = strrchr(pr->resp.data, '\"');
-	size_t length = (size_t)(etag_end - (etag_begin+1));
+	size_t length = (size_t)(etag_end - etag_begin)-1;
 	char buf[length+1];
 	memcpy(&buf, etag_begin+1, length);
 	buf[length] = '\0';
 	free(pr->resp.data);
 	pr->resp.data = (char *)malloc(length+1);
 	memcpy(pr->resp.data, buf, length);
-	pr->resp.data[length-1] = '\0';
+	pr->resp.data[length] = '\0'; // _!_
 	return pr->resp.data;
 }
