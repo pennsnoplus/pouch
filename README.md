@@ -4,7 +4,6 @@ POUCH
 A pure C wrapper for working with CouchDB.
 
 ####todo:
-- add attachment upload
 - add an error holder to each pouch_request to hold
   wrapper return status (for instance, if reading a
   file to upload fails, set the status as -1, and

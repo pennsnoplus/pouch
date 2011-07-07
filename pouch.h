@@ -144,7 +144,7 @@ void pr_free(pouch_request *pr){
 		free(pr->method);
 	}if (pr->url){				// free URL string
 		free(pr->url);
-	}if (pr->headers != NULL){
+	}if (pr->headers){
 		curl_slist_free_all(pr->headers);	// free headers
 	}
 	free(pr);				// free structure
@@ -205,7 +205,7 @@ size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data){
 
 pouch_request *pr_do(pouch_request *pr){
 	CURL *curl;	// CURL object to make the requests
-	pr->headers= NULL;	// Custom headers for uploading
+	//pr->headers= NULL;	// Custom headers for uploading
 
 	// empty the response buffer
 	if (pr->resp.data){
@@ -590,7 +590,7 @@ char *doc_cur_rev(pouch_request *pr, char *server, char *db, char *id){
 	pr->resp.data[length] = '\0'; // _!_
 	return pr->resp.data;
 }
-pouch_request *doc_create_attachment(pouch_request *pr, char *server, char *db, char *doc, char *filename){
+pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, char *doc, char *filename){
 	/*
 	   Given a filename, try to read that file and upload it as an attachment to a document.
 	 */
@@ -614,23 +614,32 @@ pouch_request *doc_create_attachment(pouch_request *pr, char *server, char *db, 
 	printf("Read %d bytes\n", numbytes);
 	pr_set_bdata(pr, (void *)fd_buf, fd_len);
 	close(fd);
-
+	/*
+	// get mime type
 	FILE *comres;
 	char combuf[strlen("file --mime-type ")+strlen(filename)+1];
 	sprintf(combuf, "file --mime-type %s", filename);
 	comres = popen(combuf, "r");
+	
 	char comdet[10000];
 	fgets(comdet, 10000, comres);
 	fclose(comres);
 	printf("result of %s=\n\t%s", combuf, comdet);
+	
 	char *mtype;
 	if ( (mtype = strchr(comdet, ' ')) == NULL){
 		fprintf(stderr, "could not get mimetype\n");
 	}
-
 	char ct[strlen("Content-Type:")+strlen(mtype)+1];
-	sprintf(ct, "Content-Type: %s", mtype);
+	sprintf(ct, "Content-Type:%s", mtype);
 	printf("MIME/CONTENT/TYPE_!_!_!:%s\n", ct);
+	*/
+	// No Need to actually get the mime-type; setting the Content-Type as
+	// application/octet-stream forces the browser to download it (because
+	// the file is assumed to be binary), and then the computer's OS opens
+	// it correctly for you. This saves a lot of time/thinking, but it's
+	// slightly hacky...
+	pr = pr_add_header(pr, "Content-Type: application/octet-stream");
 
 	// finish setting request
 	pr_set_method(pr, PUT);
@@ -640,9 +649,5 @@ pouch_request *doc_create_attachment(pouch_request *pr, char *server, char *db, 
 	pr->url = combine(pr->url, filename, "/");
 	// TODO: add support for adding to existing documents by auto-fetching the rev parameter
 	// pr_add_param(pr, "rev", rev);
-	// TODO: add support for figuring out the mime-type automatically
-	//pr_add_header(pr, "Content-Type: text/plain");
-	pr_add_header(pr, ct);
-	// TODO: add content-length header
 	return pr;
 }
