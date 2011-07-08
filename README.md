@@ -1,5 +1,5 @@
 #POUCH - Penn cOUCHdb interface
-*A pure C wrapper for working with CouchDB.*
+###A pure C wrapper for working with CouchDB.
 ##Depends
 libcurl: link to at compile time with -lcurl
 ##Usage
