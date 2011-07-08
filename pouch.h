@@ -322,7 +322,10 @@ char *combine(char *f, char *s, char *sep){
 	   Appends the string s to the string f,
 	   with an optional separator sep. If a
 	   seperator is not required, pass NULL
-	   to the sep argument.
+	   to the sep argument. f must have been
+	   malloced at some point; cannot be an
+	   uninitialized pointer, or a pointer
+	   initialized by char *f = "test"; .
 	 */
 	size_t length = 0;
 	if (*f)
@@ -349,7 +352,35 @@ char *combine(char *f, char *s, char *sep){
 	memcpy(f, buf, length);
 	return f;
 }
-
+char *scombine(char **out, char *f, char *s, char *sep){
+	/*
+	   Appends the strings f, sep, and s, in that order,
+	   and copies the result to *out. If a separator is
+	   unnecessary, call the function with sep=NULL. *out
+	   must have been malloced() before this function
+	   can be called safely, because inside the function
+	   *out is freed().
+	   */
+	size_t length = 0;
+	length += strlen(f);
+	length += strlen(s);
+	if (sep != NULL){
+		length += strlen(sep);
+	}
+	length++; // must have room for terminating \0
+	char buf[length];
+	if (sep){
+		sprintf(buf, "%s%s%s", f, sep, s);
+	}
+	else {
+		sprintf(buf, "%s%s", f, s);
+	}
+	buf[length-1] = '\0'; // null terminate
+	free(*out);
+	*out = (char *)malloc(length);
+	memcpy(*out, buf, length);
+	return *out;
+}
 pouch_request *get_all_dbs(pouch_request *p_req, char *server){
 	/*
 	   Return a list of all databases on a
@@ -578,9 +609,11 @@ pouch_request *doc_delete(pouch_request *pr, char *server, char *db, char *id, c
 	pr_add_param(pr, "rev", rev);
 	return pr;
 }
-char *doc_cur_rev(pouch_request *pr, char *server, char *db, char *id){
+char *doc_get_cur_rev(pouch_request *pr, char *server, char *db, char *id){
 	/*
-	   Returns the current revision of a document.
+	   Stores the current revision of the document in pr->resp.data.
+	   If you want to do anything with that revision string, make sure
+	   to copy it to another place in memory before reusing the request.
 	 */
 	pr = doc_get_info(pr, server, db, id);
 	pr_do(pr);
@@ -594,7 +627,7 @@ char *doc_cur_rev(pouch_request *pr, char *server, char *db, char *id){
 	free(pr->resp.data);
 	pr->resp.data = (char *)malloc(length+1);
 	memcpy(pr->resp.data, buf, length);
-	pr->resp.data[length] = '\0'; // _!_
+	pr->resp.data[length] = '\0';
 	return pr->resp.data;
 }
 pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, char *doc, char *filename){

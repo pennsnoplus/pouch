@@ -7,6 +7,16 @@
 #include "json.c"
 
 int main(int argc, char* argv[]){
+	char *a = "hello";
+	char *b = "world";
+	char *c = ", ";
+	char *d = ", cruel ";
+	char *res = (char *)malloc(1);
+	scombine(&res, a, b, c);
+	printf("res: %s\n", res);
+	scombine(&res, res, b, d);
+	printf("res: %s\n", res);
+	free(res);
 	// define strings for connecting to the database
 	char *server = "https://peterldowns:2rlz54NeO3@peterldowns.cloudant.com";
 	char *newdb = "example_db";
@@ -106,7 +116,7 @@ int main(int argc, char* argv[]){
 	getchar();
 
 	// get current revision
-	char *rev = doc_cur_rev(pr, server, newdb, docid);
+	char *rev = doc_get_cur_rev(pr, server, newdb, docid);
 	
 	char buf[strlen(rev)+1];
 	memcpy(&buf, rev, strlen(rev));
