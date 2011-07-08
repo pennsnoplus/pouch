@@ -45,7 +45,6 @@ char *url_escape(CURL *curl, char *str){
 	return curl_easy_escape(curl, str, strlen(str));
 }
 
-
 pouch_request *pr_add_header(pouch_request *pr, char *h){
 	/*
 	   Add a custom header to a request.
@@ -224,7 +223,7 @@ pouch_request *pr_do(pouch_request *pr){
 	curl = curl_easy_init();
 	if (curl){
 		// Print the request
-		printf("%s : %s\n", pr->method, pr->url);
+		//printf("%s : %s\n", pr->method, pr->url);
 
 		// setup the CURL object/request
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "pouch/0.1");				// add user-agent
@@ -236,7 +235,7 @@ pouch_request *pr_do(pouch_request *pr){
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
 
 		if (pr->req.data && pr->req.size > 0){ // check for data upload
-			printf("--> %s\n", pr->req.data);
+			//printf("--> %s\n", pr->req.data);
 			// let CURL know what data to send
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
@@ -280,9 +279,9 @@ pouch_request *pr_do(pouch_request *pr){
 	curl_easy_cleanup(curl);		// clean up the curl object
 
 	// Print the response
-	printf("Received %d bytes, status = %d\n",
-			(int)pr->resp.size, pr->curlcode);
-	printf("--> %s\n", pr->resp.data);
+	//printf("Received %d bytes, status = %d\n",
+	//		(int)pr->resp.size, pr->curlcode);
+	//printf("--> %s\n", pr->resp.data);
 	return pr;
 }
 
@@ -650,10 +649,10 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
 	}
 	// read file into buffer
 	size_t fd_len = file_info.st_size;
-	printf("File size: %d bytes\n", (int)fd_len);
+	//printf("File size: %d bytes\n", (int)fd_len);
 	char fd_buf[fd_len];
 	int numbytes = read(fd, fd_buf, fd_len);
-	printf("Read %d bytes\n", numbytes);
+	//printf("Read %d bytes\n", numbytes);
 	pr_set_bdata(pr, (void *)fd_buf, fd_len);
 	close(fd);
 	/*
@@ -666,7 +665,7 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
 	char comdet[10000];
 	fgets(comdet, 10000, comres);
 	fclose(comres);
-	printf("result of %s=\n\t%s", combuf, comdet);
+	//printf("result of %s=\n\t%s", combuf, comdet);
 	
 	char *mtype;
 	if ( (mtype = strchr(comdet, ' ')) == NULL){
@@ -674,7 +673,7 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
 	}
 	char ct[strlen("Content-Type:")+strlen(mtype)+1];
 	sprintf(ct, "Content-Type:%s", mtype);
-	printf("MIME/CONTENT/TYPE_!_!_!:%s\n", ct);
+	//printf("MIME/CONTENT/TYPE_!_!_!:%s\n", ct);
 	*/
 	// No Need to actually get the mime-type; setting the Content-Type as
 	// application/octet-stream forces the browser to download it (because
