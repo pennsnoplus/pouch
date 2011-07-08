@@ -1,7 +1,12 @@
-POUCH
-=======
-###Penn cOUCHdb interface
+#POUCH - Penn cOUCHdb interface
 A pure C wrapper for working with CouchDB.
+==========================================
+##Depends
+libcurl: link to at compile time with -lcurl
+##Usage
+gcc -o $program $program.c pouch.c -lcurl
+##Description
+coming soon
 
 ####todo:
 - add an error holder to each pouch_request to hold
