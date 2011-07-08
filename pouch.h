@@ -62,8 +62,13 @@ pouch_request *pr_init(void){
 	pouch_request *pr = calloc(1, sizeof(pouch_request));
 
 	// initializes the request buffer
-	pr->req.offset = pr->req.data;
+	pr->req.offset = pr->req.data = NULL;
 	pr->req.size = 0;
+
+	// initializes the response buffer
+	pr->resp.offset = pr->resp.data = NULL;
+	pr->resp.size = 0;
+
 	return pr;
 }
 
@@ -357,30 +362,28 @@ char *scombine(char **out, char *f, char *s, char *sep){
 	   Appends the strings f, sep, and s, in that order,
 	   and copies the result to *out. If a separator is
 	   unnecessary, call the function with sep=NULL. *out
-	   must have been malloced() before this function
-	   can be called safely, because inside the function
-	   *out is freed().
+	   must have been malloced() or initiated as NULL.
 	   */
 	size_t length = 0;
 	length += strlen(f);
 	length += strlen(s);
-	if (sep != NULL){
+	if(sep)
 		length += strlen(sep);
-	}
 	length++; // must have room for terminating \0
 	char buf[length];
-	if (sep){
+	if(sep)
 		sprintf(buf, "%s%s%s", f, sep, s);
-	}
-	else {
+	else
 		sprintf(buf, "%s%s", f, s);
-	}
 	buf[length-1] = '\0'; // null terminate
-	free(*out);
+	if(*out){
+		free(*out);
+	}
 	*out = (char *)malloc(length);
 	memcpy(*out, buf, length);
 	return *out;
 }
+//char *build_urlstring(char **out,
 pouch_request *get_all_dbs(pouch_request *p_req, char *server){
 	/*
 	   Return a list of all databases on a
@@ -388,7 +391,7 @@ pouch_request *get_all_dbs(pouch_request *p_req, char *server){
 	 */
 	pr_set_method(p_req, GET);
 	pr_set_url(p_req, server);
-	p_req->url = combine(p_req->url, "_all_dbs", "/");
+	p_req->url = scombine(&(p_req->url), p_req->url, "_all_dbs", "/");
 	return p_req;
 }
 
@@ -399,7 +402,7 @@ pouch_request *db_delete(pouch_request *p_req, char *server, char *db){
 	 */
 	pr_set_method(p_req, DELETE);
 	pr_set_url(p_req, server);
-	p_req->url = combine(p_req->url, db, "/");
+	p_req->url = scombine(&(p_req->url), p_req->url, db, "/");
 	return p_req;
 }
 
@@ -410,7 +413,7 @@ pouch_request *db_create(pouch_request *p_req, char *server, char *db){
 	 */
 	pr_set_method(p_req, PUT);
 	pr_set_url(p_req, server);
-	p_req->url = combine(p_req->url, db, "/");
+	p_req->url = scombine(&(p_req->url), p_req->url, db, "/");
 	return p_req;
 }
 
@@ -421,7 +424,7 @@ pouch_request *db_get(pouch_request *p_req, char *server, char *db){
 	 */
 	pr_set_method(p_req, GET);
 	pr_set_url(p_req, server);
-	p_req->url = combine(p_req->url, db, "/");
+	p_req->url = scombine(&(p_req->url), p_req->url, db, "/");
 	return p_req;
 }
 pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
@@ -432,8 +435,8 @@ pouch_request *db_get_changes(pouch_request *pr, char *server, char *db){
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, "_changes", "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, "_changes", "/");
 	return pr;
 }
 pouch_request *db_get_revs_limit(pouch_request *pr, char *server, char *db){
@@ -443,8 +446,8 @@ pouch_request *db_get_revs_limit(pouch_request *pr, char *server, char *db){
 	   */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, "_revs_limit", "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, "_revs_limit", "/");
 	return pr;
 }
 pouch_request *db_set_revs_limit(pouch_request *pr, char *server, char *db, char *revs){
@@ -455,8 +458,8 @@ pouch_request *db_set_revs_limit(pouch_request *pr, char *server, char *db, char
 	pr_set_method(pr, PUT);
 	pr_set_data(pr, revs);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, "_revs_limit", "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, "_revs_limit", "/");
 	return pr;
 }
 pouch_request *db_compact(pouch_request *pr, char *server, char *db){
@@ -466,8 +469,8 @@ pouch_request *db_compact(pouch_request *pr, char *server, char *db){
 	pr_set_method(pr, POST);
 	pr_set_url(pr, server);
 	pr_set_data(pr, "{}");
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, "_compact", "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, "_compact", "/");
 	return pr;
 }
 	
@@ -480,8 +483,8 @@ TODO: URL escape database and document names (/'s become %2F's)
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
 	return pr;
 }
 pouch_request *doc_get_rev(pouch_request *pr, char *server, char *db, char *id, char *rev){
@@ -490,8 +493,8 @@ pouch_request *doc_get_rev(pouch_request *pr, char *server, char *db, char *id, 
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
 	pr_add_param(pr, "rev", rev);
 	return pr;
 }
@@ -504,8 +507,8 @@ pouch_request *doc_get_revs(pouch_request *pr, char *server, char *db, char *id)
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
 	pr_add_param(pr, "revs", "true");
 	return pr;
 }
@@ -515,8 +518,8 @@ pouch_request *doc_get_info(pouch_request *pr, char *server, char *db, char *id)
 	 */
 	pr_set_method(pr, HEAD);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
 	return pr;
 }
 pouch_request *doc_create_id(pouch_request *pr, char *server, char *db, char *id, char *data){
@@ -529,8 +532,8 @@ pouch_request *doc_create_id(pouch_request *pr, char *server, char *db, char *id
 	 */
 	pr_set_method(pr, PUT);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
 	pr_set_data(pr, data);
 	return pr;
 }
@@ -540,7 +543,7 @@ pouch_request *doc_create(pouch_request *pr, char *server, char *db, char *data)
 	 */
 	pr_set_method(pr, POST);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
 	pr_set_data(pr, data);
 	return pr;
 }
@@ -550,8 +553,8 @@ pouch_request *get_all_docs(pouch_request *pr, char *server, char *db){
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, "_all_docs", "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, "_all_docs", "/");
 	return pr;
 }
 pouch_request *get_all_docs_by_seq(pouch_request *pr, char *server, char *db){
@@ -561,8 +564,8 @@ pouch_request *get_all_docs_by_seq(pouch_request *pr, char *server, char *db){
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, "_all_docs_by_seq", "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, "_all_docs_by_seq", "/");
 	return pr;
 }
 pouch_request *doc_get_attachment(pouch_request *pr, char *server, char *db, char *id, char *name){
@@ -571,9 +574,9 @@ pouch_request *doc_get_attachment(pouch_request *pr, char *server, char *db, cha
 	 */
 	pr_set_method(pr, GET);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
-	pr->url = combine(pr->url, name, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, name, "/");
 	return pr;
 }
 pouch_request *doc_copy(pouch_request *pr, char *server, char *db, char *id, char *newid, char *revision){
@@ -583,14 +586,13 @@ pouch_request *doc_copy(pouch_request *pr, char *server, char *db, char *id, cha
 	 */
 	pr_set_method(pr, COPY);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
 	// TODO: add support for document overwrite on copy
-	char *headerstr = (char *)malloc(strlen("Destination:")+1);
-	memcpy(headerstr, "Destination:", strlen("Destination:"));
-	headerstr = combine(headerstr, newid, " ");
+	char *headerstr = NULL;
+	headerstr = scombine(&headerstr, "Destination: ", newid, NULL);
 	if (revision != NULL) {
-		headerstr = combine(headerstr, revision, "?rev=");
+		headerstr = scombine(&headerstr, headerstr, revision, "?rev=");
 	}
 	pr_add_header(pr, headerstr);
 	free(headerstr);
@@ -604,8 +606,8 @@ pouch_request *doc_delete(pouch_request *pr, char *server, char *db, char *id, c
 	   */
 	pr_set_method(pr, DELETE);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, id, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, id, "/");
 	pr_add_param(pr, "rev", rev);
 	return pr;
 }
@@ -684,9 +686,9 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
 	// finish setting request
 	pr_set_method(pr, PUT);
 	pr_set_url(pr, server);
-	pr->url = combine(pr->url, db, "/");
-	pr->url = combine(pr->url, doc, "/");
-	pr->url = combine(pr->url, filename, "/");
+	pr->url = scombine(&(pr->url), pr->url, db, "/");
+	pr->url = scombine(&(pr->url), pr->url, doc, "/");
+	pr->url = scombine(&(pr->url), pr->url, filename, "/");
 	// TODO: add support for adding to existing documents by auto-fetching the rev parameter
 	// pr_add_param(pr, "rev", rev);
 	return pr;
