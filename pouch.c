@@ -630,24 +630,10 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
 	// pr_add_param(pr, "rev", rev);
 	return pr;
 }
-<<<<<<< .merge_file_2dmsXl
 pouch_request *pr_add_usrpwd(pouch_request *pr, char *usrpwd, size_t length){
 	if (pr->usrpwd)
 		free(pr->usrpwd);
 	pr->usrpwd = (char *)malloc(length);
 	memcpy(pr->usrpwd, usrpwd, length);
-=======
-pouch_request *pr_add_usrpwd(pouch_request *pr, char* usrpwd){
-	if (pr->usrpwd){
-		free(pr->usrpwd);
-		pr->usrpwd = NULL;
-	}
-	pr->usrpwd = (char *)malloc(strlen(usrpwd));
-	if (!pr->usrpwd){
-		fprintf(stderr, "could not allocate memory for usrpwd string\n");
-		return pr;
-	}
-	memcpy(pr->usrpwd, usrpwd, strlen(usrpwd));
->>>>>>> .merge_file_4OSrDl
 	return pr;
 }

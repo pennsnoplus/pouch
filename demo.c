@@ -20,22 +20,6 @@ int main(int argc, char* argv[]){
 	size_t usrpwd_length = strlen(usrpwd)+1;
 	
 	//define strings for connecting to the database
-<<<<<<< .merge_file_VlF8Ym
-=======
-	struct stat info;
-	int fd, length;
-	char *usrpwd;
-	fd = open("usrpwd", O_RDONLY);
-	fstat(fd, &info);
-	length = info.st_size;
-	if (length) {
-		usrpwd = malloc(length-1);	// exclude trailing '\n'
-		read(fd, usrpwd, length-1);
-	}
-	else {
-		usrpwd = NULL;
-	}
->>>>>>> .merge_file_nqOiGm
 	char *server = "peterldowns.cloudant.com";
 	char *newdb = "example_db";
 	char *docid = "firstdoc";
@@ -63,14 +47,7 @@ int main(int argc, char* argv[]){
 	pouch_request *pr = pr_init();
 
 	// set up authentication
-<<<<<<< .merge_file_VlF8Ym
 	pr = pr_add_usrpwd(pr, usrpwd, usrpwd_length);
-=======
-	if (usrpwd){
-		printf("adding authentication string: %s\n", usrpwd);
-		pr = pr_add_usrpwd(pr, usrpwd);
-	}
->>>>>>> .merge_file_nqOiGm
 
 	//get all databases
 	pr = get_all_dbs(pr, server);
@@ -157,12 +134,8 @@ int main(int argc, char* argv[]){
 	pr_do(pr);
 	
 	
-<<<<<<< .merge_file_VlF8Ym
 	printf("Finished creating some documents.\n");
 	printf("\tpress enter to delete them.");
-=======
-	printf("...catching my breath....\n");
->>>>>>> .merge_file_nqOiGm
 	getchar();
 
 	//delete a document
