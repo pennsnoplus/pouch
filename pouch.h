@@ -31,6 +31,7 @@ typedef struct pouch_request {
 	struct curl_slist *headers;	// Custom headers for uploading
 	char *method;		// HTTP method
 	char *url;			// Destination (e.g., "http://127.0.0.1:5984/test");
+	char *usrpwd;		// Holds a user:password authentication string
 	CURLcode curlcode;	// CURL request status holder
 	pouch_pkt req;		// holds data to be sent
 	pouch_pkt resp;		// holds response
@@ -50,6 +51,11 @@ pouch_request *pr_set_bdata(pouch_request *pr, void *dat, size_t length);
 pouch_request *pr_set_method(pouch_request *pr, char *method);
 pouch_request *pr_add_header(pouch_request *pr, char *h);
 pouch_request *pr_add_param(pouch_request *pr, char *key, char *value);
+<<<<<<< .merge_file_esxzwp
+pouch_request *pr_add_usrpwd(pouch_request *pr, char *usrpwd, size_t length);
+=======
+pouch_request *pr_add_usrpwd(pouch_request *pr, char* usrpwd);
+>>>>>>> .merge_file_r3T8dp
 pouch_request *pr_clear_data(pouch_request *pr);
 pouch_request *pr_clear_params(pouch_request *pr);
 void pr_free(pouch_request *pr);

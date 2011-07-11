@@ -6,8 +6,37 @@
 #include "json.h"
 
 int main(int argc, char* argv[]){
+	// read in authentication information
+	char *pwdfile_name = "usrpwd";
+	FILE *pwdfile;
+	pwdfile = fopen(pwdfile_name, "r");
+	char usrpwd[10000]; // seems large enough for most usr:pwd combos
+	fgets(usrpwd, 10000, pwdfile);
+	fclose(pwdfile);
+	char *endl;
+	if ( (endl = strchr(usrpwd, '\n')) != NULL){
+		usrpwd[endl-usrpwd] = '\0';
+	}
+	size_t usrpwd_length = strlen(usrpwd)+1;
+	
 	//define strings for connecting to the database
-	char *server = "peterldowns:2rlz54NeO3@peterldowns.cloudant.com";
+<<<<<<< .merge_file_VlF8Ym
+=======
+	struct stat info;
+	int fd, length;
+	char *usrpwd;
+	fd = open("usrpwd", O_RDONLY);
+	fstat(fd, &info);
+	length = info.st_size;
+	if (length) {
+		usrpwd = malloc(length-1);	// exclude trailing '\n'
+		read(fd, usrpwd, length-1);
+	}
+	else {
+		usrpwd = NULL;
+	}
+>>>>>>> .merge_file_nqOiGm
+	char *server = "peterldowns.cloudant.com";
 	char *newdb = "example_db";
 	char *docid = "firstdoc";
 
@@ -32,6 +61,16 @@ int main(int argc, char* argv[]){
 
 	//create a pouch_request* object
 	pouch_request *pr = pr_init();
+
+	// set up authentication
+<<<<<<< .merge_file_VlF8Ym
+	pr = pr_add_usrpwd(pr, usrpwd, usrpwd_length);
+=======
+	if (usrpwd){
+		printf("adding authentication string: %s\n", usrpwd);
+		pr = pr_add_usrpwd(pr, usrpwd);
+	}
+>>>>>>> .merge_file_nqOiGm
 
 	//get all databases
 	pr = get_all_dbs(pr, server);
@@ -100,7 +139,6 @@ int main(int argc, char* argv[]){
 							 // memory is overwritten.
 	memcpy(&buf, rev, strlen(rev));
 	buf[strlen(rev)] = '\0';
-	printf("Current revision: %s\n", buf);
 
 	//get a document
 	pr = doc_get(pr, server, newdb, docid);
@@ -117,6 +155,14 @@ int main(int argc, char* argv[]){
 	//get all docs
 	pr = get_all_docs(pr, server, newdb);
 	pr_do(pr);
+	
+	
+<<<<<<< .merge_file_VlF8Ym
+	printf("Finished creating some documents.\n");
+	printf("\tpress enter to delete them.");
+=======
+	printf("...catching my breath....\n");
+>>>>>>> .merge_file_nqOiGm
 	getchar();
 
 	//delete a document
@@ -142,7 +188,7 @@ int main(int argc, char* argv[]){
 	json_delete(json_obj);
 	if(*datastr)
 		free(datastr);
-
-	//end
+	
+	printf("Done.\n");
 	return 0;
 }

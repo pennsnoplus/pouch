@@ -148,6 +148,8 @@ void pr_free(pouch_request *pr){
 		free(pr->url);
 	}if (pr->headers){
 		curl_slist_free_all(pr->headers);	// free headers
+	}if (pr->usrpwd){
+		free(pr->usrpwd);
 	}
 	free(pr);				// free structure
 }
@@ -230,6 +232,9 @@ pouch_request *pr_do(pouch_request *pr){
 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, recv_data_callback);	// where to store the response
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)pr);
+		if(pr->usrpwd){	// if there's a valid auth string, use it
+			curl_easy_setopt(curl, CURLOPT_USERPWD, pr->usrpwd);
+		}
 
 		if (pr->req.data && pr->req.size > 0){ // check for data upload
 			//printf("--> %s\n", pr->req.data);
@@ -237,8 +242,6 @@ pouch_request *pr_do(pouch_request *pr){
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, send_data_callback);
 			curl_easy_setopt(curl, CURLOPT_READDATA, (void *)pr);
 		}
-		//TODO: add username/password authentication
-		//		(char *user, char *pass inside of pouch_request?)
 		
 		if (!strncmp(pr->method, PUT, 3)){ // PUT-specific option
 			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
@@ -625,5 +628,26 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
 	pr->url = combine(&(pr->url), pr->url, filename, "/");
 	// TODO: add support for adding to existing documents by auto-fetching the rev parameter
 	// pr_add_param(pr, "rev", rev);
+	return pr;
+}
+<<<<<<< .merge_file_2dmsXl
+pouch_request *pr_add_usrpwd(pouch_request *pr, char *usrpwd, size_t length){
+	if (pr->usrpwd)
+		free(pr->usrpwd);
+	pr->usrpwd = (char *)malloc(length);
+	memcpy(pr->usrpwd, usrpwd, length);
+=======
+pouch_request *pr_add_usrpwd(pouch_request *pr, char* usrpwd){
+	if (pr->usrpwd){
+		free(pr->usrpwd);
+		pr->usrpwd = NULL;
+	}
+	pr->usrpwd = (char *)malloc(strlen(usrpwd));
+	if (!pr->usrpwd){
+		fprintf(stderr, "could not allocate memory for usrpwd string\n");
+		return pr;
+	}
+	memcpy(pr->usrpwd, usrpwd, strlen(usrpwd));
+>>>>>>> .merge_file_4OSrDl
 	return pr;
 }
