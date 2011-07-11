@@ -65,27 +65,6 @@ struct JsonNode
 		} children;
 	};
 };
-double json_get_number(JsonNode *node){
-	if (node && node->tag == JSON_NUMBER){
-		return node->number_;
-	}
-	fprintf(stderr, "json_get_number: not a number\n");
-	return -1;
-}
-char *json_get_string(JsonNode *node){
-	if (node && node->tag == JSON_STRING){
-		return node->string_;
-	}
-	fprintf(stderr, "json_get_string: not a string\n");
-	return (char *)NULL;
-}
-char *json_get_bool(JsonNode *node){
-	if (node && node->tag == JSON_BOOL){
-		return node->bool_;
-	}
-	fprintf(stderr, "json_get_bool: not a bool\n");
-	return false;
-}
 
 
 /*** Encoding, decoding, and validation ***/
@@ -104,6 +83,10 @@ JsonNode   *json_find_element   (JsonNode *array, int index);
 JsonNode   *json_find_member    (JsonNode *object, const char *key);
 
 JsonNode   *json_first_child    (const JsonNode *node);
+
+double json_get_number(JsonNode *node);
+char *json_get_string(JsonNode *node);
+bool json_get_bool(JsonNode *node);
 
 #define json_foreach(i, object_or_array)            \
 	for ((i) = json_first_child(object_or_array);   \
