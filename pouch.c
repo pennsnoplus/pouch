@@ -585,38 +585,37 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
 	}
 	// read file into buffer
 	size_t fd_len = file_info.st_size;
-	//printf("File size: %d bytes\n", (int)fd_len);
 	char fd_buf[fd_len];
 	int numbytes = read(fd, fd_buf, fd_len);
-	//printf("Read %d bytes\n", numbytes);
 	pr_set_bdata(pr, (void *)fd_buf, fd_len);
 	close(fd);
-	/*
 	// get mime type
 	FILE *comres;
 	char combuf[strlen("file --mime-type ")+strlen(filename)+1];
 	sprintf(combuf, "file --mime-type %s", filename);
 	comres = popen(combuf, "r");
-	
 	char comdet[10000];
 	fgets(comdet, 10000, comres);
 	fclose(comres);
-	//printf("result of %s=\n\t%s", combuf, comdet);
-	
+	// store the mime type to a buffer
 	char *mtype;
 	if ( (mtype = strchr(comdet, ' ')) == NULL){
 		fprintf(stderr, "could not get mimetype\n");
 	}
-	char ct[strlen("Content-Type:")+strlen(mtype)+1];
-	sprintf(ct, "Content-Type:%s", mtype);
-	//printf("MIME/CONTENT/TYPE_!_!_!:%s\n", ct);
-	*/
-	// No Need to actually get the mime-type; setting the Content-Type as
-	// application/octet-stream forces the browser to download it (because
-	// the file is assumed to be binary), and then the computer's OS opens
-	// it correctly for you. This saves a lot of time/thinking, but it's
-	// slightly hacky...
+	mtype++;
+	char *endmtype;
+	if ( (endmtype = strchr(mtype, '\n')) == NULL){
+		fprintf(stderr, "could not get end of mimetype\n");
+	}
+	char ct[strlen("Content-Type: ")+(endmtype-mtype)+1];
+	snprintf(ct, strlen("Content-Type: ")+(size_t)(endmtype-mtype)+1, "Content-Type: %s", mtype);
+	// just in case the actual mime-type is weird or broken, add a default
+	// mime-type of application/octet-stream, which is used for binary files.
+	// this way, even if something goes horribly wrong, we'll be able to download
+	// and view the data we've uploaded.
 	pr = pr_add_header(pr, "Content-Type: application/octet-stream");
+	// add the actual mime-type
+	pr = pr_add_header(pr, ct);
 
 	// finish setting request
 	pr_set_method(pr, PUT);
