@@ -276,6 +276,11 @@ pouch_request *pr_do(pouch_request *pr){
 		curl_slist_free_all(pr->headers);	// free headers
 		pr->headers = NULL;
 	}
+	if (!pr->curlcode){
+		pr->curlcode = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &pr->httpresponse);
+		if (pr->curlcode != CURLE_OK)
+			pr->httpresponse = 500;
+	}
 	curl_easy_cleanup(curl);		// clean up the curl object
 
 	// Print the response

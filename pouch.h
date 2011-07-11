@@ -33,6 +33,7 @@ typedef struct pouch_request {
 	char *url;			// Destination (e.g., "http://127.0.0.1:5984/test");
 	char *usrpwd;		// Holds a user:password authentication string
 	CURLcode curlcode;	// CURL request status holder
+	long httpresponse;	// holds the http response of a request
 	pouch_pkt req;		// holds data to be sent
 	pouch_pkt resp;		// holds response
 	// int error;		// holds an error code
