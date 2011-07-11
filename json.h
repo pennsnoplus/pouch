@@ -65,6 +65,28 @@ struct JsonNode
 		} children;
 	};
 };
+double json_get_number(JsonNode *node){
+	if (node && node->tag == JSON_NUMBER){
+		return node->number_;
+	}
+	fprintf(stderr, "json_get_number: not a number\n");
+	return -1;
+}
+char *json_get_string(JsonNode *node){
+	if (node && node->tag == JSON_STRING){
+		return node->string_;
+	}
+	fprintf(stderr, "json_get_string: not a string\n");
+	return (char *)NULL;
+}
+char *json_get_bool(JsonNode *node){
+	if (node && node->tag == JSON_BOOL){
+		return node->bool_;
+	}
+	fprintf(stderr, "json_get_bool: not a bool\n");
+	return false;
+}
+
 
 /*** Encoding, decoding, and validation ***/
 
