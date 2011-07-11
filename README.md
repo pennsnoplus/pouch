@@ -3,10 +3,10 @@
 ##Depends
 libcurl: link to at compile time with -lcurl
 ##Usage
-gcc -o $program $program.c pouch.c -lcurl
+	gcc -o $program $program.c pouch.c -lcurl
 
 to compile the example program, demo.c, which
-uses Joseph Adams' JSON library (http://git.ozlabs.org/?p=ccan;a=tree;f=ccan/json):
+uses Joseph Adams' [JSON library](http://git.ozlabs.org/?p=ccan;a=tree;f=ccan/json):
 
 	gcc -o demo demo.c pouch.c json.c -lcurl
 ##Description
