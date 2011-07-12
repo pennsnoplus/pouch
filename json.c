@@ -1397,3 +1397,14 @@ bool json_get_bool(JsonNode *node){
 	}
 	return false;
 }
+int json_get_num_mems(JsonNode *node){
+	int num_mems = -1;
+	if (node && (node->tag == JSON_ARRAY || node->tag == JSON_OBJECT)){
+		num_mems++;
+		JsonNode *element;
+		json_foreach(element, node){
+			num_mems++;
+		}
+	}
+	return num_mems;
+}
