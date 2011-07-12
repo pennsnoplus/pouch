@@ -7,17 +7,17 @@
 
 int main(int argc, char* argv[]){
 	// read in authentication information
-	char *pwdfile_name = "usrpwd";
-	FILE *pwdfile;
-	pwdfile = fopen(pwdfile_name, "r");
-	char usrpwd[10000]; // seems large enough for most usr:pwd combos
-	fgets(usrpwd, 10000, pwdfile);
-	fclose(pwdfile);
-	char *endl;
-	if ( (endl = strchr(usrpwd, '\n')) != NULL){
-		usrpwd[endl-usrpwd] = '\0';
-	}
-	size_t usrpwd_length = strlen(usrpwd)+1;
+	//char *pwdfile_name = "usrpwd";
+	//FILE *pwdfile;
+	//pwdfile = fopen(pwdfile_name, "r");
+	//char usrpwd[10000]; // seems large enough for most usr:pwd combos
+	//fgets(usrpwd, 10000, pwdfile);
+	//fclose(pwdfile);
+	//char *endl;
+	//if ( (endl = strchr(usrpwd, '\n')) != NULL){
+		//usrpwd[endl-usrpwd] = '\0';
+	//}
+	//size_t usrpwd_length = strlen(usrpwd)+1;
 	
 	//define strings for connecting to the database
 	char *server = "peterldowns.cloudant.com";
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]){
 	pouch_request *pr = pr_init();
 
 	// set up authentication
-	pr = pr_add_usrpwd(pr, usrpwd, usrpwd_length);
+	//pr = pr_add_usrpwd(pr, usrpwd, usrpwd_length);
 
 	//get all databases
 	pr = get_all_dbs(pr, server);
