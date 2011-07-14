@@ -637,19 +637,15 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
                 lowercase[i] = tolower(lowercase[i]);
             }
             if(!strcmp(lowercase, ".jpg") || !strcmp(lowercase, ".jpeg")){
-                printf("JPEG file\n");
                 pr_add_header(pr, "Content-Type: image/jpeg");
             }
             else if(!strcmp(lowercase, ".png")){
-                printf("PNG file\n");
                 pr_add_header(pr, "Content-Type: image/png");
             }
             else if(!strcmp(lowercase, ".gif")){
-                printf("GIF file\n");
                 pr_add_header(pr, "Content-Type: image/gif");
             }
             else if(!strcmp(lowercase, ".tif")){
-                printf("TIFF file\n");
                 pr_add_header(pr, "Content-Type: image/tiff");
             }
             else if(!strcmp(lowercase, ".c")
@@ -660,15 +656,10 @@ pouch_request *doc_add_attachment(pouch_request *pr, char *server, char *db, cha
                     || !strcmp(lowercase, ".md")
                     || !strcmp(lowercase, ".text")
                     || !strcmp(lowercase, ".txt")){
-                printf("Text file\n");
                 pr_add_header(pr, "Content-Type: text/plain");
             }
             else if(!strcmp(lowercase, ".pdf")){
-                printf("PDF file\n");
                 pr_add_header(pr, "Content-Type: application/pdf");
-            }
-            else{
-                printf("Binary file\n");
             }
         }
     }
