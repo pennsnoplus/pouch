@@ -2,6 +2,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#define USE_SYS_FILE 0
+
 #define GET "GET"
 #define PUT "PUT"
 #define POST "POST"

@@ -90,7 +90,7 @@ int main(int argc, char* argv[]){
 	pr_do(pr);
 
 	//create a new attachment
-	char *fname = "king-tut.jpg";
+	char *fname = "king-tut.JPG";
 	pr = doc_add_attachment(pr, server, newdb, fname, fname);
 	pr_do(pr);
 
