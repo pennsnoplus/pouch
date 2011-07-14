@@ -28,42 +28,42 @@
 #include <stddef.h>
 
 typedef enum {
-	JSON_NULL,
-	JSON_BOOL,
-	JSON_STRING,
-	JSON_NUMBER,
-	JSON_ARRAY,
-	JSON_OBJECT,
+    JSON_NULL,
+    JSON_BOOL,
+    JSON_STRING,
+    JSON_NUMBER,
+    JSON_ARRAY,
+    JSON_OBJECT,
 } JsonTag;
 
 typedef struct JsonNode JsonNode;
 
 struct JsonNode
 {
-	/* only if parent is an object or array (NULL otherwise) */
-	JsonNode *parent;
-	JsonNode *prev, *next;
+    /* only if parent is an object or array (NULL otherwise) */
+    JsonNode *parent;
+    JsonNode *prev, *next;
 
-	/* only if parent is an object (NULL otherwise) */
-	char *key; /* Must be valid UTF-8. */
+    /* only if parent is an object (NULL otherwise) */
+    char *key; /* Must be valid UTF-8. */
 
-	JsonTag tag;
-	union {
-		/* JSON_BOOL */
-		bool bool_;
+    JsonTag tag;
+    union {
+        /* JSON_BOOL */
+        bool bool_;
 
-		/* JSON_STRING */
-		char *string_; /* Must be valid UTF-8. */
+        /* JSON_STRING */
+        char *string_; /* Must be valid UTF-8. */
 
-		/* JSON_NUMBER */
-		double number_;
+        /* JSON_NUMBER */
+        double number_;
 
-		/* JSON_ARRAY */
-		/* JSON_OBJECT */
-		struct {
-			JsonNode *head, *tail;
-		} children;
-	};
+        /* JSON_ARRAY */
+        /* JSON_OBJECT */
+        struct {
+            JsonNode *head, *tail;
+        } children;
+    };
 };
 
 
@@ -88,11 +88,12 @@ double json_get_number(JsonNode *node);
 char *json_get_string(JsonNode *node);
 bool json_get_bool(JsonNode *node);
 int json_get_num_mems(JsonNode *node);
+JsonNode *json_mkcopy(JsonNode *head);
 
 #define json_foreach(i, object_or_array)            \
-	for ((i) = json_first_child(object_or_array);   \
-			(i) != NULL;                               \
-			(i) = (i)->next)
+    for ((i) = json_first_child(object_or_array);   \
+            (i) != NULL;                               \
+            (i) = (i)->next)
 
 
 
