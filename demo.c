@@ -6,21 +6,8 @@
 #include "json.h"
 
 int main(int argc, char* argv[]){
-	// read in authentication information
-	//char *pwdfile_name = "usrpwd";
-	//FILE *pwdfile;
-	//pwdfile = fopen(pwdfile_name, "r");
-	//char usrpwd[10000]; // seems large enough for most usr:pwd combos
-	//fgets(usrpwd, 10000, pwdfile);
-	//fclose(pwdfile);
-	//char *endl;
-	//if ( (endl = strchr(usrpwd, '\n')) != NULL){
-		//usrpwd[endl-usrpwd] = '\0';
-	//}
-	//size_t usrpwd_length = strlen(usrpwd)+1;
-	
 	//define strings for connecting to the database
-	char *server = "peterldowns.cloudant.com";
+	char *server = "snoplus.cloudant.com";
 	char *newdb = "example_db";
 	char *docid = "firstdoc";
 
@@ -46,16 +33,57 @@ int main(int argc, char* argv[]){
 	//create a pouch_request* object
 	pouch_request *pr = pr_init();
 
-	// set up authentication
-	//pr = pr_add_usrpwd(pr, usrpwd, usrpwd_length);
+	/*
+	 * set up authentication by reading from a file
+	 * - you may want to do this if you're connecting
+	 * to a private server but also publishing your project
+	 * somewhere online; this way, your user/pass combination
+	 * isn't stored in source, but can still be used.
+	 */
+	
+	/*
+	// read in authentication information
+	char *pwdfile_name = "usrpwd";
+	FILE *pwdfile;
+	pwdfile = fopen(pwdfile_name, "r");
+	char usrpwd[10000]; // seems large enough for most usr:pwd combos
+	fgets(usrpwd, 10000, pwdfile);
+	fclose(pwdfile);
+	char *endl;
+	if ( (endl = strchr(usrpwd, '\n')) != NULL){
+		usrpwd[endl-usrpwd] = '\0';
+	}
+	size_t usrpwd_length = strlen(usrpwd)+1;
+	pr = pr_add_usrpwd(pr, usrpwd);
+	*/
+
+	// set up authentication by adding a string from code
+	pr = pr_add_usrpwd(pr, "snoplus:snoplustest");
 
 	//get all databases
 	pr = get_all_dbs(pr, server);
 	pr_do(pr);
+	
+	// Print out all the databases
+	JsonNode *all_dbs = json_decode(pr->resp.data);
+	int has_our_db = 0;
+	printf("Databases on %s\n", server);
+	JsonNode *db;
 
-	//create new database
-	pr = db_create(pr, server, newdb);
-	pr_do(pr);
+	json_foreach(db, all_dbs){
+		printf("\t%s\n", json_get_string(db));
+		if(!strcmp(json_get_string(db), newdb))
+			has_our_db = 1;
+	}
+	json_delete(db);
+	json_delete(all_dbs);
+
+	if (!has_our_db){
+		//create new database
+		printf("Creating new database %s\n", newdb);
+		pr = db_create(pr, server, newdb);
+		pr_do(pr);
+	}
 
 	//get db revs limit
 	pr = db_get_revs_limit(pr, server, newdb);
@@ -108,22 +136,19 @@ int main(int argc, char* argv[]){
 	pr_do(pr);
 
 	//get current revision
-	char *rev = doc_get_cur_rev(pr, server, newdb, docid);
-	char buf[strlen(rev)+1]; // must copy revision to a buffer,
-							 // because rev points to pr->req.data
-							 // (which holds the revision string);
-							 // when the request is reused, that
-							 // memory is overwritten.
-	memcpy(&buf, rev, strlen(rev));
-	buf[strlen(rev)] = '\0';
+	char *rev;
+	rev= doc_get_cur_rev(pr, server, newdb, docid);
+	printf("Current revision of %s/%s is %s\n", newdb, docid, rev);
+	
+	//get a document with a specific revision
+	pr = doc_get_rev(pr, server, newdb, docid, rev);
+	pr_do(pr);
+
 
 	//get a document
 	pr = doc_get(pr, server, newdb, docid);
 	pr_do(pr);
 
-	//get a document with a specific revision
-	pr = doc_get_rev(pr, server, newdb, docid, buf);
-	pr_do(pr);
 	
 	//head a document
 	pr = doc_get_info(pr, server, newdb, docid);
@@ -135,24 +160,48 @@ int main(int argc, char* argv[]){
 	
 	
 	printf("Finished creating some documents.\n");
-	printf("\tpress enter to delete them.");
+	printf("\tYou may go to %s/_utils/database.html?%s to see them using Futon.\n", server, newdb);
+	printf("\tWhen you're ready, press enter to delete them.");
 	getchar();
 
 	//delete a document
-	pr = doc_delete(pr, server, newdb, docid, buf);
+	pr = doc_delete(pr, server, newdb, docid, rev);
+	pr_do(pr);
+	
+	free(rev); // all done with this revision
+
+	// Delete all the documents on newdb
+	pr = get_all_docs(pr, server, newdb);
 	pr_do(pr);
 
-	//get all docs by sequence
-	pr = get_all_docs_by_seq(pr, server, newdb);
-	pr_do(pr);
+	JsonNode *response = json_decode(pr->resp.data);
+	JsonNode *all_docs = json_find_member(response, "rows");
+	printf("Deleting all docs on %s/%s\n", server, newdb);
+	JsonNode *doc, *del_resp;
+	char *_rev;
+	json_foreach(doc, all_docs){
+		char *id = json_get_string(json_find_member(doc, "id")); // get the doc's id
+		
+		_rev = doc_get_cur_rev(pr, server, newdb, id); // get the doc's revision
+		
+		pr = doc_delete(pr, server, newdb, id, _rev); // delete the doc
+		pr_do(pr);
 
-	//delete a database
-	pr = db_delete(pr, server, newdb);
-	pr_do(pr);
+		del_resp = json_decode(pr->resp.data); // check the response
+		bool ok = json_get_bool(json_find_member(del_resp, "ok"));
+		if (ok)
+			printf("\tDeleted \"%s\"\t(rev= %s )\n", id, _rev);
+		else {
+			printf("Unable to delete \"%s\"\t(rev= %s )\n", id, _rev);
+			printf("server returned: %s\n", pr->resp.data);
+		}
+		// clean up
+		json_delete(del_resp);
+		free(_rev);
+	}
 
-
-//////////////////////////////////////
-
+	json_delete(doc);
+	json_delete(response);
 
 	//cleanup
 	pr_free(pr);
