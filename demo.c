@@ -54,11 +54,12 @@ int main(int argc, char* argv[]){
 		usrpwd[endl-usrpwd] = '\0';
 	}
 	size_t usrpwd_length = strlen(usrpwd)+1;
-	pr = pr_add_usrpwd(pr, usrpwd);
+	pr = pr_add_usrpwd(pr, usrpwd, usrpwd_length);
 	*/
 
 	// set up authentication by adding a string from code
-	pr = pr_add_usrpwd(pr, "snoplus:snoplustest");
+	char *usrpwd = "snoplus:snoplustest";
+	pr = pr_add_usrpwd(pr, usrpwd, strlen(usrpwd)+1);
 
 	//get all databases
 	pr = get_all_dbs(pr, server);

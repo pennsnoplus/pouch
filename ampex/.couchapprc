@@ -1,0 +1,10 @@
+{
+	"env": {
+		"default": {
+			"db": "http://snoplus:snoplustest@snoplus.cloudant.com/ampex"
+		},
+		"testing": {
+			"db": "http://snoplus:snoplustest@snoplus.cloudant.com/ampex_t"
+		}
+	}
+}

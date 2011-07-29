@@ -761,12 +761,10 @@ pouch_request *doc_add_attachment(pouch_request * pr, char *server, char *db,
 	return pr;
 }
 
-pouch_request *pr_add_usrpwd(pouch_request * pr, char *usrpwd)
+pouch_request *pr_add_usrpwd(pouch_request * pr, char *usrpwd, size_t length)
 {
 	if (pr->usrpwd)
 		free(pr->usrpwd);
-	size_t length = 0;
-	length += strlen(usrpwd);
 	pr->usrpwd = (char *)malloc(length + 1);
 	memcpy(pr->usrpwd, usrpwd, length);
 	return pr;
