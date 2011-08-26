@@ -54,7 +54,7 @@ char *combine(char **out, char *f, char *s, char *sep){
 	memcpy(*out, buf, length);
 	return *out;
 }
-char *doc_get_cur_rev(pouch_request * pr, char *server, char *db, char *id){
+char *doc_get_cur_rev(PouchReq * pr, char *server, char *db, char *id){
 	/*
 	   Stores the current revision of the document in pr->resp.data.
 	   If you want to do anything with that revision string, make sure
@@ -72,8 +72,9 @@ char *doc_get_cur_rev(pouch_request * pr, char *server, char *db, char *id){
 	memset(buf, 0, length + 1);
 	strncpy(buf, etag_begin + 1, length);
 
-	if (pr->resp.data)
+	if (pr->resp.data){
 		free(pr->resp.data);
+	}
 	pr->resp.data = (char *)malloc(length + 1);
 	memset(pr->resp.data, 0, length + 1);
 	strncpy(pr->resp.data, buf, length + 1);

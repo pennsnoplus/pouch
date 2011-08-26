@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pouch.h"
-#include "json.h"
+#include "../src/pouch.h"
+#include "lib/json.h"
 
 int main(int argc, char* argv[]){
 	//define strings for connecting to the database
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]){
 	
 	/*
 	// read in authentication information
-	char *pwdfile_name = "usrpwd";
+	char *pwdfile_name = "files/usrpwd";
 	FILE *pwdfile;
 	pwdfile = fopen(pwdfile_name, "r");
 	char usrpwd[10000]; // seems large enough for most usr:pwd combos
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]){
 	pr_do(pr);
 
 	//create a new attachment
-	char *fname = "king-tut.JPG";
+	char *fname = "files/king-tut.JPG";
 	pr = doc_add_attachment(pr, server, newdb, fname, fname);
 	pr_do(pr);
 
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]){
 
 	//get current revision
 	char *rev;
-	rev= doc_get_cur_rev(pr, server, newdb, docid);
+	rev = doc_get_cur_rev(pr, server, newdb, docid);
 	printf("Current revision of %s/%s is %s\n", newdb, docid, rev);
 	
 	//get a document with a specific revision
