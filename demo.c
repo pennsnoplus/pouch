@@ -30,8 +30,8 @@ int main(int argc, char* argv[]){
 	json_append_member(json_obj, "HEP", json_arr2);
 	char *datastr = json_encode(json_obj);
 
-	//create a pouch_request* object
-	pouch_request *pr = pr_init();
+	//create a PouchReq* object
+	PouchReq *pr = pr_init();
 
 	/*
 	 * set up authentication by reading from a file
