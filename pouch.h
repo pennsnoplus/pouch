@@ -60,12 +60,12 @@ pouch_request *pr_add_param(pouch_request *pr, char *key, char *value);
 pouch_request *pr_add_usrpwd(pouch_request *pr, char *usrpwd, size_t length);
 pouch_request *pr_clear_data(pouch_request *pr);
 pouch_request *pr_clear_params(pouch_request *pr);
+pouch_request *pr_do(pouch_request *pr);
 void pr_free(pouch_request *pr);
 
 // Request Helper Functions
 size_t recv_data_callback(char *ptr, size_t size, size_t nmemb, void *data);
 size_t send_data_callback(void *ptr, size_t size, size_t nmemb, void *data);
-pouch_request *pr_do(pouch_request *pr);
 
 // Database Wrapper Functions
 pouch_request *get_all_dbs(pouch_request *p_req, char *server);
