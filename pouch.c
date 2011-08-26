@@ -121,6 +121,7 @@ pouch_request *pr_set_data(pouch_request * pr, char *str)
 	if (pr->req.data) {	// free older data
 		free(pr->req.data);
 	}
+	// TODO: use strdup?
 	pr->req.data = (char *)malloc(length + 1);	// allocate space, include '\0'
 	memset(pr->req.data, '\0', length + 1);	// write nulls to the new space
 	memcpy(pr->req.data, str, length);	// copy over the data
