@@ -54,6 +54,32 @@ char *combine(char **out, char *f, char *s, char *sep){
 	memcpy(*out, buf, length);
 	return *out;
 }
+char *doc_get_cur_rev(pouch_request * pr, char *server, char *db, char *id){
+	/*
+	   Stores the current revision of the document in pr->resp.data.
+	   If you want to do anything with that revision string, make sure
+	   to copy it to another place in memory before reusing the request.
+	 */
+	pr = doc_get_info(pr, server, db, id);
+	pr_do(pr);
+	// at this point, pr->resp.data has all of the header stuff.
+	char *etag_begin = strchr(pr->resp.data, '\"');
+	char *etag_end = strrchr(pr->resp.data, '\"');
+
+	size_t length = (size_t) (etag_end - etag_begin) - 1;
+
+	char *buf = (char *)malloc(length + 1);
+	memset(buf, 0, length + 1);
+	strncpy(buf, etag_begin + 1, length);
+
+	if (pr->resp.data)
+		free(pr->resp.data);
+	pr->resp.data = (char *)malloc(length + 1);
+	memset(pr->resp.data, 0, length + 1);
+	strncpy(pr->resp.data, buf, length + 1);
+
+	return buf;
+}
 
 // PouchReq functions
 PouchReq *pr_init(void){

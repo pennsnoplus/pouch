@@ -107,6 +107,7 @@ struct _PouchMInfo {
 // Miscellaneous helper functions
 char *url_escape(CURL *curl, char *str);
 char *combine(char **out, char *f, char *s, char *sep);
+char *doc_get_cur_rev(pouch_request * pr, char *server, char *db, char *id)
 
 // PouchReq functions
 PouchReq *pr_init(void);
