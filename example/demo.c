@@ -120,12 +120,12 @@ int main(int argc, char* argv[]){
 
 	//create a new attachment
 	char *fname = "files/king-tut.JPG";
-	pr = doc_add_attachment(pr, server, newdb, fname, fname);
+	pr = doc_add_attachment(pr, server, newdb, "king-tut.JPG", fname);
 	pr_do(pr);
 
 	//create another attachment
-	char *fname2 = "README.md";
-	pr = doc_add_attachment(pr, server, newdb, fname2, fname2);
+	char *fname2 = "files/README.md";
+	pr = doc_add_attachment(pr, server, newdb, "README.md", fname2);
 	pr_do(pr);
 
 	//get an attachment
